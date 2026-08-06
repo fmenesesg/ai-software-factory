@@ -1,0 +1,37 @@
+# PROFILE=full — standard plus optional later capabilities (not ACM)
+profile: full
+description: >
+  Extends standard with remaining agents and optional RHACS/Quay paths.
+  ACM / multi-cluster remains out of scope.
+
+components:
+  orchestrator: true
+  inference_gateway: true
+  observability_otel: true
+  agents:
+    pm: true
+    architect: true
+    developer: true
+    reviewer: true
+    security: true
+    qa: true
+    documentation: true
+    deployment: true
+    sre: true
+  mcp:
+    github: true
+    filesystem: true
+    git: true
+    openshift: true
+    kubernetes: true
+    documentation: true
+    developer_hub: true
+  pipelines_tekton: true
+  ephemeral_namespaces: true
+  gitops_promote_hitl: true
+  rhdh_component: true
+  ghcr_publish: true
+  live_granite: true
+  rhacs: true
+  quay: true
+  acm: false

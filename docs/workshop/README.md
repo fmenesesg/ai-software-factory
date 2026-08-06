@@ -1,6 +1,5 @@
-# Workshop bootstrap docs (placeholder)
+# Workshop docs
 
-RBAC / least-privilege token checklist and bootstrap usage will land with milestone **M1**
-(`docs/workshop/bootstrap.md`, task 1.2).
+Presenter-led workshop materials (English).
 
-Until then, see `.env.example` at the repository root for the parameter schema.
+- [Bootstrap](./bootstrap.md) — parameter schema, RBAC / least-privilege token checklist, dry-run

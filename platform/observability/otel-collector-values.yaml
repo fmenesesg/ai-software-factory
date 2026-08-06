@@ -1,0 +1,92 @@
+# OpenTelemetry collector values — AI Software Factory (ADR-010)
+#
+# Attribute conventions (also mirrored in packages/agent-sdk agent_sdk.otel):
+#   workshop.run_id      — correlate a presenter workshop run
+#   workshop.tokens.*    — prompt / completion / total token counts
+#   workshop.tool        — MCP tool name
+#   workshop.fallback    — true when emergency inference fallback served
+#   workshop.agent       — agent Deployment role
+#   workshop.stage       — orchestrator stage
+#   workshop.model_id    — Granite / model id
+#
+# Never export secret values (tokens, passwords, API keys) as span attributes.
+
+mode: deployment
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+  tag: "0.114.0"
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  processors:
+    batch: {}
+    attributes/factory:
+      actions:
+        - key: workshop.run_id
+          action: upsert
+        - key: workshop.tokens.prompt
+          action: upsert
+        - key: workshop.tokens.completion
+          action: upsert
+        - key: workshop.tokens.total
+          action: upsert
+        - key: workshop.tool
+          action: upsert
+        - key: workshop.fallback
+          action: upsert
+        - key: workshop.agent
+          action: upsert
+        - key: workshop.stage
+          action: upsert
+        - key: workshop.model_id
+          action: upsert
+    filter/drop_secrets:
+      traces:
+        span:
+          # Drop spans that accidentally labeled secret-bearing keys (defense in depth).
+          - 'attributes["http.request.header.authorization"] != nil'
+
+  exporters:
+    debug:
+      verbosity: basic
+    # Workshop clusters should replace with the site Prometheus/Tempo/Jaeger exporter.
+    otlp/backend:
+      endpoint: tempo.observability.svc:4317
+      tls:
+        insecure: true
+
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [attributes/factory, filter/drop_secrets, batch]
+        exporters: [debug, otlp/backend]
+      metrics:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [debug]
+      logs:
+        receivers: [otlp]
+        processors: [batch]
+        exporters: [debug]
