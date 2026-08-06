@@ -1,0 +1,32 @@
+# PROFILE=minimal — lean local / constrained clusters
+profile: minimal
+description: Orchestrator + inference gateway + OTel without full platform slice.
+
+components:
+  orchestrator: true
+  inference_gateway: true
+  observability_otel: true
+  agents:
+    pm: false
+    architect: false
+    developer: false
+    reviewer: false
+    security: false
+    qa: false
+    documentation: false
+    deployment: false
+    sre: false
+  mcp:
+    github: false
+    filesystem: false
+    git: false
+    openshift: false
+    kubernetes: false
+  pipelines_tekton: false
+  ephemeral_namespaces: false
+  gitops_promote_hitl: false
+  rhdh_component: false
+  ghcr_publish: false
+  live_granite: true
+  rhacs: false
+  quay: false

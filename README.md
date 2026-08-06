@@ -50,4 +50,14 @@ Apache License 2.0 — see [LICENSE](./LICENSE).
 
 ## Status
 
-Milestone **M0** (repo bootstrap / layout). Implementation of agents, MCP servers, and sample-app code begins in later milestones.
+Milestone **M1** (bootstrap, agent-sdk, inference-gateway, orchestrator skeleton, OTel, profiles).
+
+```bash
+# Schema validation without writes
+./scripts/workshop-bootstrap.sh --dry-run
+
+# Package unit tests
+python -m pytest packages/ -q
+```
+
+Agents, MCP servers, and sample-app vertical slice continue in **M2+**.

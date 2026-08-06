@@ -1,0 +1,34 @@
+# PROFILE=standard — workshop MVP vertical slice (default)
+profile: standard
+description: >
+  Presenter workshop set — MVP agents, Tekton ephemeral, GitOps HITL stub,
+  OTel, GHCR, RHDH visualization, live Granite.
+
+components:
+  orchestrator: true
+  inference_gateway: true
+  observability_otel: true
+  agents:
+    pm: true
+    architect: true
+    developer: true
+    reviewer: true          # light
+    security: true          # stub
+    qa: true                # stub
+    documentation: false
+    deployment: false
+    sre: false
+  mcp:
+    github: true
+    filesystem: true
+    git: true
+    openshift: true
+    kubernetes: true
+  pipelines_tekton: true
+  ephemeral_namespaces: true
+  gitops_promote_hitl: true
+  rhdh_component: true
+  ghcr_publish: true
+  live_granite: true
+  rhacs: false
+  quay: false
