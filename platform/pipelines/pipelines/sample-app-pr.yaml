@@ -1,0 +1,88 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: sample-app-pr
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+spec:
+  description: >
+    PR pipeline: build/test/push to ghcr.io, deploy ephemeral ns under NAMESPACE_PREFIX,
+    publish URL+ns evidence on the PR (ADR-006 image_digest + ephemeral_url + ns_name).
+  params:
+    - name: IMAGE
+      type: string
+      default: ghcr.io/fmenesesg/ai-software-factory-sample-app
+    - name: NAMESPACE_PREFIX
+      type: string
+      default: asf-workshop-
+    - name: PR_NUMBER
+      type: string
+    - name: GITHUB_OWNER
+      type: string
+      default: fmenesesg
+    - name: GITHUB_REPO
+      type: string
+      default: ai-software-factory
+    - name: DRY_RUN
+      type: string
+      default: "false"
+  workspaces:
+    - name: source
+  results:
+    - name: IMAGE_DIGEST
+      description: Pushed image digest
+      value: $(tasks.build-test-push.results.IMAGE_DIGEST)
+    - name: EPHEMERAL_URL
+      value: $(tasks.deploy-ephemeral.results.EPHEMERAL_URL)
+    - name: NAMESPACE
+      value: $(tasks.deploy-ephemeral.results.NAMESPACE)
+  tasks:
+    - name: build-test-push
+      taskRef:
+        name: sample-app-build-test-push
+      params:
+        - name: IMAGE
+          value: $(params.IMAGE)
+      workspaces:
+        - name: source
+          workspace: source
+    - name: deploy-ephemeral
+      runAfter: [build-test-push]
+      taskRef:
+        name: sample-app-deploy-ephemeral
+      params:
+        - name: IMAGE
+          value: $(params.IMAGE)
+        - name: IMAGE_DIGEST
+          value: $(tasks.build-test-push.results.IMAGE_DIGEST)
+        - name: NAMESPACE
+          value: $(params.NAMESPACE_PREFIX)pr-$(params.PR_NUMBER)
+        - name: NAMESPACE_PREFIX
+          value: $(params.NAMESPACE_PREFIX)
+        - name: PR_NUMBER
+          value: $(params.PR_NUMBER)
+      workspaces:
+        - name: source
+          workspace: source
+    - name: pr-evidence
+      runAfter: [deploy-ephemeral]
+      taskRef:
+        name: sample-app-pr-evidence
+      params:
+        - name: PR_NUMBER
+          value: $(params.PR_NUMBER)
+        - name: EPHEMERAL_URL
+          value: $(tasks.deploy-ephemeral.results.EPHEMERAL_URL)
+        - name: NAMESPACE
+          value: $(tasks.deploy-ephemeral.results.NAMESPACE)
+        - name: IMAGE_DIGEST
+          value: $(tasks.build-test-push.results.IMAGE_DIGEST)
+        - name: GITHUB_OWNER
+          value: $(params.GITHUB_OWNER)
+        - name: GITHUB_REPO
+          value: $(params.GITHUB_REPO)
+        - name: DRY_RUN
+          value: $(params.DRY_RUN)
+      workspaces:
+        - name: source
+          workspace: source

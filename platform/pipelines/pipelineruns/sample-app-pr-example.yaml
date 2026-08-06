@@ -1,0 +1,27 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: sample-app-pr-example
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    tekton.dev/pipeline: sample-app-pr
+spec:
+  pipelineRef:
+    name: sample-app-pr
+  params:
+    - name: IMAGE
+      value: ghcr.io/fmenesesg/ai-software-factory-sample-app
+    - name: NAMESPACE_PREFIX
+      value: asf-workshop-
+    - name: PR_NUMBER
+      value: "0"
+    - name: DRY_RUN
+      value: "true"
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 1Gi

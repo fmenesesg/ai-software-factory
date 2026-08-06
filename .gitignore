@@ -65,6 +65,10 @@ tmp/
 temp/
 *.log
 
+# Sample-app local SQLite
+sample-app/db/*.db
+sample-app/db/*.db-*
+
 # CodeGraph local index (optional; regenerate per worktree)
 # Keep ignored so indexes are not shared across checkouts
 .codegraph/

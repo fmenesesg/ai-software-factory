@@ -1,0 +1,65 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: sample-app-pr-evidence
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+spec:
+  description: >
+    Publish ephemeral URL + namespace on the PR via comment helper and a Check stub payload.
+    Live GitHub calls require GITHUB_TOKEN; dry-run mode writes evidence JSON only.
+  params:
+    - name: PR_NUMBER
+      type: string
+    - name: EPHEMERAL_URL
+      type: string
+    - name: NAMESPACE
+      type: string
+    - name: IMAGE_DIGEST
+      type: string
+    - name: GITHUB_OWNER
+      type: string
+      default: fmenesesg
+    - name: GITHUB_REPO
+      type: string
+      default: ai-software-factory
+    - name: DRY_RUN
+      type: string
+      default: "false"
+  results:
+    - name: EVIDENCE_JSON
+      description: JSON evidence recorded for orchestrator artifact IDs
+  workspaces:
+    - name: source
+  steps:
+    - name: comment-and-check
+      image: python:3.12-slim
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: GITHUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: github-token
+              key: token
+              optional: true
+        - name: ASF_PR_NUMBER
+          value: $(params.PR_NUMBER)
+        - name: ASF_EPHEMERAL_URL
+          value: $(params.EPHEMERAL_URL)
+        - name: ASF_NAMESPACE
+          value: $(params.NAMESPACE)
+        - name: ASF_IMAGE_DIGEST
+          value: $(params.IMAGE_DIGEST)
+        - name: ASF_GITHUB_OWNER
+          value: $(params.GITHUB_OWNER)
+        - name: ASF_GITHUB_REPO
+          value: $(params.GITHUB_REPO)
+        - name: ASF_DRY_RUN
+          value: $(params.DRY_RUN)
+        - name: ASF_EVIDENCE_PATH
+          value: $(results.EVIDENCE_JSON.path)
+      script: |
+        #!/bin/sh
+        set -eu
+        pip install --quiet httpx
+        PYTHONPATH=platform/pipelines/src python -m asf_pipelines.pr_evidence
