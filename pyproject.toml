@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-software-factory"
-version = "0.4.0"
+version = "0.6.0"
 description = "AI Software Factory monorepo packages (agent-sdk, inference-gateway, orchestrator, mcp, agents)"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -25,6 +25,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+rag = ["psycopg[binary]>=3.2"]
 
 [tool.setuptools.packages.find]
 where = [
@@ -36,12 +37,16 @@ where = [
   "mcp/filesystem/src",
   "mcp/openshift/src",
   "mcp/kubernetes/src",
+  "mcp/developer-hub/src",
   "agents/pm/src",
   "agents/architect/src",
   "agents/developer/src",
   "agents/reviewer/src",
   "agents/security/src",
   "agents/qa/src",
+  "agents/documentation/src",
+  "agents/deployment/src",
+  "agents/sre/src",
   "platform/pipelines/src",
   "platform/gitops/src",
   "sample-app/backend/src",
@@ -57,12 +62,16 @@ pythonpath = [
   "mcp/filesystem/src",
   "mcp/openshift/src",
   "mcp/kubernetes/src",
+  "mcp/developer-hub/src",
   "agents/pm/src",
   "agents/architect/src",
   "agents/developer/src",
   "agents/reviewer/src",
   "agents/security/src",
   "agents/qa/src",
+  "agents/documentation/src",
+  "agents/deployment/src",
+  "agents/sre/src",
   "platform/pipelines/src",
   "platform/gitops/src",
   "sample-app/backend/src",
@@ -74,12 +83,16 @@ testpaths = [
   "mcp/filesystem",
   "mcp/openshift",
   "mcp/kubernetes",
+  "mcp/developer-hub",
   "agents/pm",
   "agents/architect",
   "agents/developer",
   "agents/reviewer",
   "agents/security",
   "agents/qa",
+  "agents/documentation",
+  "agents/deployment",
+  "agents/sre",
   "platform/pipelines",
   "platform/gitops",
   "sample-app/backend",

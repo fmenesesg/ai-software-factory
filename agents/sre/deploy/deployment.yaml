@@ -1,0 +1,62 @@
+# SRE agent — least-privilege ServiceAccount (no cluster-admin)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: asf-agent-sre
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.agent: sre
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asf-agent-sre
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.agent: sre
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      asf.agent: sre
+  template:
+    metadata:
+      labels:
+        asf.agent: sre
+    spec:
+      serviceAccountName: asf-agent-sre
+      containers:
+        - name: sre
+          image: ghcr.io/fmenesesg/ai-software-factory-agent-sre:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: MCP_OPENSHIFT_URL
+              value: http://asf-mcp-openshift:8094
+            - name: DRY_RUN
+              value: "false"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asf-agent-sre
+spec:
+  selector:
+    asf.agent: sre
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

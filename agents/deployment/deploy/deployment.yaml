@@ -1,0 +1,62 @@
+# Deployment agent — least-privilege ServiceAccount (no cluster-admin)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: asf-agent-deployment
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.agent: deployment
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asf-agent-deployment
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.agent: deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      asf.agent: deployment
+  template:
+    metadata:
+      labels:
+        asf.agent: deployment
+    spec:
+      serviceAccountName: asf-agent-deployment
+      containers:
+        - name: deployment
+          image: ghcr.io/fmenesesg/ai-software-factory-agent-deployment:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: MCP_OPENSHIFT_URL
+              value: http://asf-mcp-openshift:8094
+            - name: DRY_RUN
+              value: "false"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asf-agent-deployment
+spec:
+  selector:
+    asf.agent: deployment
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

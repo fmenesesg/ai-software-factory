@@ -109,3 +109,49 @@ def test_live_path_uses_osai_model_id_and_returns_usage(monkeypatch: pytest.Monk
 def test_default_model_id_from_settings() -> None:
     settings = GatewaySettings(stub_mode=True, upstream_model="ibm/granite-*-instruct")
     assert settings.upstream_model == "ibm/granite-*-instruct"
+
+
+def test_emergency_fallback_when_upstream_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Live Granite fails → INFERENCE_FALLBACK serves emergency path with fallback=true."""
+
+    settings = GatewaySettings(
+        stub_mode=False,
+        upstream_url="https://osai.example/v1",
+        upstream_model="ibm/granite-3.3-8b-instruct",
+        max_retries=0,
+        inference_fallback=True,
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, json={"error": "unavailable"})
+
+    transport = httpx.MockTransport(handler)
+    real_async_client = httpx.AsyncClient
+
+    def async_client_factory(*args, **kwargs):  # type: ignore[no-untyped-def]
+        kwargs["transport"] = transport
+        return real_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", async_client_factory)
+
+    app = create_app(settings)
+    client = TestClient(app)
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "messages": [{"role": "user", "content": "continue demo"}],
+            "factory": {"run_id": "drill-1"},
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["factory"]["fallback"] is True
+    assert body["factory"]["fallback_label"] == "emergency-only"
+    assert "EMERGENCY FALLBACK" in body["choices"][0]["message"]["content"]
+
+
+def test_health_labels_fallback_emergency_only() -> None:
+    settings = GatewaySettings(stub_mode=False, inference_fallback=True)
+    body = TestClient(create_app(settings)).get("/health").json()
+    assert body["fallback_label"] == "emergency-only"
+    assert body["inference_fallback"] is True
