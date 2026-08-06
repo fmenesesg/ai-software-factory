@@ -1,0 +1,68 @@
+# Security agent stub — least-privilege ServiceAccount (no cluster-admin)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: asf-agent-security
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.agent: security
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asf-agent-security
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.agent: security
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      asf.agent: security
+  template:
+    metadata:
+      labels:
+        asf.agent: security
+    spec:
+      serviceAccountName: asf-agent-security
+      containers:
+        - name: security
+          image: ghcr.io/fmenesesg/ai-software-factory-agent-security:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: MCP_GITHUB_URL
+              value: http://asf-mcp-github:8091
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: asf-workshop-secrets
+                  key: GITHUB_TOKEN
+                  optional: true
+            - name: DRY_RUN
+              value: "false"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asf-agent-security
+spec:
+  selector:
+    asf.agent: security
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

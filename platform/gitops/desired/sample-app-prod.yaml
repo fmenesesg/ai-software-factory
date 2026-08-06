@@ -1,0 +1,42 @@
+# Prod-like desired state for sample-app (monorepo GitOps — promote via PR HITL)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-app
+  namespace: asf-prod
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.env: prod-like
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sample-app
+  template:
+    metadata:
+      labels:
+        app: sample-app
+    spec:
+      containers:
+        - name: sample-app
+          # Pinned by promote PR; ghcr.io remains MVP registry.
+          image: ghcr.io/fmenesesg/ai-software-factory-sample-app:latest
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-app
+  namespace: asf-prod
+spec:
+  selector:
+    app: sample-app
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
