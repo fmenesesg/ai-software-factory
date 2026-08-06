@@ -1,0 +1,75 @@
+# Architect agent — least-privilege ServiceAccount (no cluster-admin)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: asf-agent-architect
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.agent: architect
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asf-agent-architect
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.agent: architect
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      asf.agent: architect
+  template:
+    metadata:
+      labels:
+        asf.agent: architect
+    spec:
+      serviceAccountName: asf-agent-architect
+      containers:
+        - name: architect
+          image: ghcr.io/fmenesesg/ai-software-factory-agent-architect:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: INFERENCE_GATEWAY_URL
+              value: http://asf-inference-gateway:8081
+            - name: OSAI_MODEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: asf-workshop-secrets
+                  key: OSAI_MODEL_ID
+                  optional: true
+            - name: MCP_GITHUB_URL
+              value: http://asf-mcp-github:8091
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: asf-workshop-secrets
+                  key: GITHUB_TOKEN
+            - name: DRY_RUN
+              value: "false"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asf-agent-architect
+spec:
+  selector:
+    asf.agent: architect
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

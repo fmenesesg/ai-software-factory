@@ -30,6 +30,9 @@ class GatewaySettings(BaseSettings):
     stub_mode: bool = Field(
         default=True,
         validation_alias="GATEWAY_STUB_MODE",
-        description="When true, /v1/chat/completions returns a local stub without upstream.",
+        description=(
+            "Emergency/local stub when true. Workshop live Granite path uses "
+            "GATEWAY_STUB_MODE=false with OSAI_INFERENCE_URL + OSAI_MODEL_ID."
+        ),
     )
     inference_fallback: bool = Field(default=False, validation_alias="INFERENCE_FALLBACK")
