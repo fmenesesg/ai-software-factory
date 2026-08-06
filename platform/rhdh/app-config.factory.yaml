@@ -1,0 +1,23 @@
+# app-config fragment — enable GitHub plugin for factory pipeline/check visibility
+# Merge into RHDH app-config (do not commit secrets; use bootstrap-prompted tokens).
+
+catalog:
+  locations:
+    - type: url
+      target: https://github.com/fmenesesg/ai-software-factory/blob/main/platform/rhdh/catalog-info.yaml
+      rules:
+        - allow: [Component, System]
+
+# GitHub integration (token via secret / bootstrap — never hardcode):
+# integrations:
+#   github:
+#     - host: github.com
+#       token: ${GITHUB_TOKEN}
+
+# Enable GitHub plugin entity cards so PR Checks (asf/ephemeral, asf/security-scan,
+# asf/qa-tests) and Actions/Tekton-linked status are visible on the factory Component.
+dynamicPlugins:
+  frontend:
+    redhat.github:
+      # Illustration only — exact dynamic-plugin keys depend on RHDH version.
+      enabled: true

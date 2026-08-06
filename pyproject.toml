@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-software-factory"
-version = "0.3.0"
+version = "0.4.0"
 description = "AI Software Factory monorepo packages (agent-sdk, inference-gateway, orchestrator, mcp, agents)"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -39,7 +39,11 @@ where = [
   "agents/pm/src",
   "agents/architect/src",
   "agents/developer/src",
+  "agents/reviewer/src",
+  "agents/security/src",
+  "agents/qa/src",
   "platform/pipelines/src",
+  "platform/gitops/src",
   "sample-app/backend/src",
 ]
 
@@ -56,7 +60,11 @@ pythonpath = [
   "agents/pm/src",
   "agents/architect/src",
   "agents/developer/src",
+  "agents/reviewer/src",
+  "agents/security/src",
+  "agents/qa/src",
   "platform/pipelines/src",
+  "platform/gitops/src",
   "sample-app/backend/src",
 ]
 testpaths = [
@@ -69,7 +77,11 @@ testpaths = [
   "agents/pm",
   "agents/architect",
   "agents/developer",
+  "agents/reviewer",
+  "agents/security",
+  "agents/qa",
   "platform/pipelines",
+  "platform/gitops",
   "sample-app/backend",
   "scripts/tests",
 ]

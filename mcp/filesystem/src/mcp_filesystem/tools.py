@@ -10,6 +10,10 @@ from agent_sdk.otel import factory_span
 
 from mcp_filesystem.config import FilesystemMcpSettings
 
+# Threat-matrix docs-like paths — denied outside docs/sample-app allowlist.
+_DOCS_LIKE_NAMES = frozenset({"requirements.txt", "readme.sh"})
+_DOCS_LIKE_SUFFIXES = (".mdx",)
+
 
 class FilesystemToolError(RuntimeError):
     pass
@@ -17,6 +21,14 @@ class FilesystemToolError(RuntimeError):
 
 class FilesystemSecurityError(ValueError):
     pass
+
+
+def is_docs_like_path(path: Path) -> bool:
+    """Return True for requirements.txt, README.sh, and *.mdx paths."""
+    name = path.name.lower()
+    if name in _DOCS_LIKE_NAMES:
+        return True
+    return any(name.endswith(suffix) for suffix in _DOCS_LIKE_SUFFIXES)
 
 
 @dataclass
@@ -32,6 +44,9 @@ class FilesystemTools:
         self.workspace_root = root
         self.writable_roots = [
             (self.workspace_root / rel).resolve() for rel in self.settings.writable_root_list()
+        ]
+        self.docs_like_roots = [
+            (self.workspace_root / rel).resolve() for rel in self.settings.docs_like_root_list()
         ]
 
     def list_tools(self) -> list[dict[str, Any]]:
@@ -76,6 +91,17 @@ class FilesystemTools:
                 continue
         raise FilesystemSecurityError(f"write outside allowlist denied: {path}")
 
+    def _assert_docs_like_allowed(self, path: Path) -> None:
+        if not is_docs_like_path(path):
+            return
+        for root in self.docs_like_roots:
+            try:
+                path.relative_to(root)
+                return
+            except ValueError:
+                continue
+        raise FilesystemSecurityError(f"docs-like path outside allowlist denied: {path}")
+
     def read(self, path: str) -> dict[str, Any]:
         target = self._resolve_under_workspace(path)
         if not target.is_file():
@@ -85,6 +111,7 @@ class FilesystemTools:
     def write(self, path: str, content: str) -> dict[str, Any]:
         target = self._resolve_under_workspace(path)
         self._assert_writable(target)
+        self._assert_docs_like_allowed(target)
         if self.settings.dry_run:
             return {
                 "ok": True,

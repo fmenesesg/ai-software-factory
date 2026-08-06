@@ -1,0 +1,40 @@
+# RHDH factory catalog component — visualization only (HITL remains GitHub)
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ai-software-factory
+  title: AI Software Factory
+  description: >
+    Presenter-led factory workshop surface. Pipeline and Check status come from
+    the GitHub plugin — RHDH is visualization, not HITL authority.
+  annotations:
+    github.com/project-slug: fmenesesg/ai-software-factory
+    backstage.io/source-location: url:https://github.com/fmenesesg/ai-software-factory/
+    # GitHub Checks / Actions / PR status rendered via GitHub plugin
+    github.com/team-slug: fmenesesg/ai-software-factory
+  tags:
+    - workshop
+    - factory
+    - tekton
+    - gitops
+  links:
+    - url: https://github.com/fmenesesg/ai-software-factory
+      title: Source repository
+      icon: github
+    - url: https://github.com/fmenesesg/ai-software-factory/actions
+      title: CI / Checks
+      icon: github
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:default/workshop-facilitators
+  system: system:default/ai-software-factory
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: ai-software-factory
+  title: AI Software Factory System
+  description: Orchestrator, agents, Tekton, GitOps, and sample-app vertical slice.
+spec:
+  owner: group:default/workshop-facilitators

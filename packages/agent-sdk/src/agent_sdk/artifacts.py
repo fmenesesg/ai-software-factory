@@ -20,6 +20,7 @@ ARTIFACT_ID_KEYS: tuple[str, ...] = (
     "ns_name",
     "gitops_pr_url",
     "promote_approval_id",
+    "sync_evidence",
 )
 
 _URL_RE = re.compile(r"^https?://[^\s]+$", re.IGNORECASE)
@@ -74,6 +75,7 @@ class ArtifactIds(BaseModel):
     ns_name: str | None = None
     gitops_pr_url: str | None = None
     promote_approval_id: str | None = None
+    sync_evidence: str | None = None
 
     @field_validator("*", mode="before")
     @classmethod

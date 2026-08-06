@@ -58,6 +58,12 @@ class InMemoryGitHubHttp:
             }
         if method.upper() == "GET" and "/pulls/" in path and path.endswith("/reviews"):
             return {"_list": []}  # tools unwrap list responses
+        if method.upper() == "POST" and "/pulls/" in path and path.endswith("/reviews"):
+            return {
+                "id": 77,
+                "state": (json or {}).get("event", "COMMENTED"),
+                "html_url": "https://github.com/example/pull/1#pullrequestreview-77",
+            }
         if method.upper() == "POST" and path.endswith("/issues") is False and "/comments" in path:
             return {"id": 1, "html_url": "https://github.com/example/comment/1"}
         return {"ok": True}
@@ -113,6 +119,7 @@ class GitHubTools:
         return [
             {"name": "create_pull_request", "description": "Open PR on owned repo", "mutating": True},
             {"name": "list_pull_reviews", "description": "List PR reviews for HITL poll", "mutating": False},
+            {"name": "submit_pull_review", "description": "Submit APPROVE/REQUEST_CHANGES review", "mutating": True},
             {"name": "create_issue_comment", "description": "Comment on owned issue", "mutating": True},
             {"name": "get_pull", "description": "Get PR metadata", "mutating": False},
         ]
@@ -124,6 +131,8 @@ class GitHubTools:
                 return self.create_pull_request(args)
             if name == "list_pull_reviews":
                 return self.list_pull_reviews(args)
+            if name == "submit_pull_review":
+                return self.submit_pull_review(args)
             if name == "create_issue_comment":
                 return self.create_issue_comment(args)
             if name == "get_pull":
@@ -181,6 +190,49 @@ class GitHubTools:
             reviews = []
         return {"ok": True, "pull_number": number, "reviews": reviews}
 
+    def submit_pull_review(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Submit a PR review (APPROVE / REQUEST_CHANGES / COMMENT) — no shell concat."""
+        reject_shell_command_form(args.get("command") or args.get("shell") or args.get("gh_command"))
+        owner = str(args.get("owner") or self.settings.github_owner)
+        repo = str(args.get("repo") or self.settings.github_repo)
+        assert_owned_repo(owner, repo, self.settings.github_owner, self.settings.github_repo)
+        number = int(args.get("pull_number") or args.get("number") or 0)
+        if number <= 0:
+            raise GitHubSecurityError("pull_number is required")
+        event = str(args.get("event") or args.get("verdict") or "COMMENT").strip().upper().replace("-", "_")
+        if event in {"APPROVED", "APPROVE"}:
+            event = "APPROVE"
+        elif event in {"CHANGES_REQUESTED", "REQUEST_CHANGES", "REQUESTCHANGES"}:
+            event = "REQUEST_CHANGES"
+        elif event not in {"APPROVE", "REQUEST_CHANGES", "COMMENT"}:
+            raise GitHubSecurityError("event must be APPROVE, REQUEST_CHANGES, or COMMENT")
+        body = str(args.get("body") or args.get("comment") or "")
+        if "GITHUB_TOKEN=" in body:
+            raise GitHubSecurityError("body: env / token injection denied")
+        payload = {"event": event, "body": body}
+        if self.settings.dry_run:
+            return {
+                "ok": True,
+                "dry_run": True,
+                "blocked": True,
+                "reason": "dry_run",
+                "would_review": payload,
+                "pull_number": number,
+            }
+        assert self.http is not None
+        result = self.http.request(
+            "POST",
+            f"/repos/{owner}/{repo}/pulls/{number}/reviews",
+            json=payload,
+        )
+        return {
+            "ok": True,
+            "dry_run": False,
+            "id": result.get("id"),
+            "state": result.get("state") or event,
+            "html_url": result.get("html_url"),
+            "pull_number": number,
+        }
     def create_issue_comment(self, args: dict[str, Any]) -> dict[str, Any]:
         owner = str(args.get("owner") or self.settings.github_owner)
         repo = str(args.get("repo") or self.settings.github_repo)

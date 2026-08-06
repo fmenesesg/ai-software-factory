@@ -50,18 +50,17 @@ Apache License 2.0 — see [LICENSE](./LICENSE).
 
 ## Status
 
-Milestone **M3** (sample-app, Tekton→ghcr.io, ephemeral ns, OpenShift/Kubernetes MCP).
+Milestone **M4/M5 MVP** (light Reviewer, Security/QA stubs, docs-like path RED, scan Check hooks, GitOps promote HITL, Argo stub, RHDH viz).
 
 ```bash
 # Schema validation without writes
 ./scripts/workshop-bootstrap.sh --dry-run
 
-# Focused M3 tests (k8s-free)
-helm lint sample-app/helm
-python -m pytest platform/pipelines mcp/openshift mcp/kubernetes sample-app scripts/tests -q
+# Focused M4/M5 tests (k8s-free)
+python -m pytest agents/reviewer agents/security agents/qa platform/gitops mcp/filesystem platform/pipelines/tests/test_scan_hooks.py -q
 
 # Ephemeral teardown (prefix-scoped; dry-run)
 NAMESPACE_PREFIX=asf-workshop- DRY_RUN=true ./scripts/teardown-ephemeral.sh
 ```
 
-Cluster-dependent ACs (live PipelineRun / Route URL) require workshop OpenShift; manifests and unit tests cover the success-path contract without a cluster.
+Cluster-dependent ACs (live PipelineRun / Route URL / Argo sync) require workshop OpenShift; manifests and unit tests cover the success-path contract without a cluster.

@@ -1,0 +1,28 @@
+# Argo CD Application stub — sync only after GitHub promote HITL approval
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: asf-sample-app-prod
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.gitops: stub
+  annotations:
+    asf.ai/sync-evidence-field: sync_evidence
+    asf.ai/hitl: github-promote-approval
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/fmenesesg/ai-software-factory.git
+    targetRevision: main
+    path: platform/gitops/desired
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: asf-prod
+  # Automated sync intentionally unset/disabled until promote_approval_id exists.
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+status:
+  # Populated by orchestrator/gitops helper after HITL — field name: sync_evidence
+  sync_evidence: ""
