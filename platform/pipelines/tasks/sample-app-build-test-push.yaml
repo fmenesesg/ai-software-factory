@@ -1,0 +1,55 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: sample-app-build-test-push
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+spec:
+  description: >
+    Build, test, and push the sample-app image to ghcr.io.
+    On success the IMAGE_DIGEST result is set for downstream ephemeral deploy.
+  params:
+    - name: IMAGE
+      type: string
+      description: Fully qualified image reference without digest (e.g. ghcr.io/org/sample-app)
+    - name: CONTEXT
+      type: string
+      default: sample-app
+    - name: CONTAINERFILE
+      type: string
+      default: sample-app/Containerfile
+  results:
+    - name: IMAGE_DIGEST
+      description: sha256 digest of the pushed image (success path evidence for ADR-006)
+    - name: IMAGE_URL
+      description: Image URL including digest
+  workspaces:
+    - name: source
+  steps:
+    - name: unit-test
+      image: python:3.12-slim
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        set -eu
+        pip install --quiet fastapi uvicorn pydantic pytest httpx
+        PYTHONPATH=sample-app/backend/src pytest sample-app/backend -q
+    - name: build-and-push
+      image: quay.io/buildah/stable:latest
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        privileged: true
+      script: |
+        #!/bin/bash
+        set -euo pipefail
+        IMAGE="$(params.IMAGE)"
+        buildah bud -f "$(params.CONTAINERFILE)" -t "${IMAGE}" "$(params.CONTEXT)"
+        buildah push --digestfile /tmp/digest "${IMAGE}" "docker://${IMAGE}"
+        DIGEST="$(cat /tmp/digest)"
+        # Normalize to sha256:<hex> form expected by artifact contract.
+        case "${DIGEST}" in
+          sha256:*) ;;
+          *) DIGEST="sha256:${DIGEST}" ;;
+        esac
+        printf '%s' "${DIGEST}" | tee "$(results.IMAGE_DIGEST.path)"
+        printf '%s@%s' "${IMAGE}" "${DIGEST}" | tee "$(results.IMAGE_URL.path)"

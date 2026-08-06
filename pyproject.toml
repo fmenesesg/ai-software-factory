@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-software-factory"
-version = "0.2.0"
+version = "0.3.0"
 description = "AI Software Factory monorepo packages (agent-sdk, inference-gateway, orchestrator, mcp, agents)"
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -20,6 +20,7 @@ dependencies = [
   "langgraph>=0.2",
   "langgraph-checkpoint-postgres>=2.0",
   "psycopg[binary]>=3.2",
+  "pyyaml>=6",
 ]
 
 [project.optional-dependencies]
@@ -33,9 +34,13 @@ where = [
   "mcp/git/src",
   "mcp/github/src",
   "mcp/filesystem/src",
+  "mcp/openshift/src",
+  "mcp/kubernetes/src",
   "agents/pm/src",
   "agents/architect/src",
   "agents/developer/src",
+  "platform/pipelines/src",
+  "sample-app/backend/src",
 ]
 
 [tool.pytest.ini_options]
@@ -46,17 +51,26 @@ pythonpath = [
   "mcp/git/src",
   "mcp/github/src",
   "mcp/filesystem/src",
+  "mcp/openshift/src",
+  "mcp/kubernetes/src",
   "agents/pm/src",
   "agents/architect/src",
   "agents/developer/src",
+  "platform/pipelines/src",
+  "sample-app/backend/src",
 ]
 testpaths = [
   "packages",
   "mcp/git",
   "mcp/github",
   "mcp/filesystem",
+  "mcp/openshift",
+  "mcp/kubernetes",
   "agents/pm",
   "agents/architect",
   "agents/developer",
+  "platform/pipelines",
+  "sample-app/backend",
+  "scripts/tests",
 ]
 addopts = "-q"

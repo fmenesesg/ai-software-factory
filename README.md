@@ -50,14 +50,18 @@ Apache License 2.0 — see [LICENSE](./LICENSE).
 
 ## Status
 
-Milestone **M1** (bootstrap, agent-sdk, inference-gateway, orchestrator skeleton, OTel, profiles).
+Milestone **M3** (sample-app, Tekton→ghcr.io, ephemeral ns, OpenShift/Kubernetes MCP).
 
 ```bash
 # Schema validation without writes
 ./scripts/workshop-bootstrap.sh --dry-run
 
-# Package unit tests
-python -m pytest packages/ -q
+# Focused M3 tests (k8s-free)
+helm lint sample-app/helm
+python -m pytest platform/pipelines mcp/openshift mcp/kubernetes sample-app scripts/tests -q
+
+# Ephemeral teardown (prefix-scoped; dry-run)
+NAMESPACE_PREFIX=asf-workshop- DRY_RUN=true ./scripts/teardown-ephemeral.sh
 ```
 
-Agents, MCP servers, and sample-app vertical slice continue in **M2+**.
+Cluster-dependent ACs (live PipelineRun / Route URL) require workshop OpenShift; manifests and unit tests cover the success-path contract without a cluster.

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: sample-app
+description: Orders/inventory demo workload for AI Software Factory (ADR-012)
+type: application
+version: 0.3.0
+appVersion: "0.3.0"
