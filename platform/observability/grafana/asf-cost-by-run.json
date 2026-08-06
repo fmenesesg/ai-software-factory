@@ -1,0 +1,62 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "AI Software Factory token/cost by workshop.run_id (ADR-010). Sample dashboard — import into Grafana.",
+  "title": "ASF Cost by run_id",
+  "uid": "asf-cost-by-run",
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "browser",
+  "panels": [
+    {
+      "type": "table",
+      "title": "Cost estimate by workshop.run_id",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "queryType": "traceql",
+          "query": "{ resource.service.name =~ \".*\" && span.workshop.run_id != nil }"
+        }
+      ],
+      "description": "Correlate spans with workshop.tokens.* and factory.cost_estimate. Use platform/observability/cost_report.py for offline HTML from exported attrs."
+    },
+    {
+      "type": "timeseries",
+      "title": "Token usage (prompt + completion)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 10 },
+      "id": 2,
+      "targets": [
+        {
+          "refId": "B",
+          "expr": "sum by (workshop_run_id) (workshop_tokens_total)",
+          "legendFormat": "{{workshop_run_id}}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Emergency fallback spans",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 18 },
+      "id": 3,
+      "targets": [
+        {
+          "refId": "C",
+          "expr": "sum(workshop_fallback_true_total)"
+        }
+      ],
+      "description": "workshop.fallback / inference.fallback = true (emergency-only)"
+    }
+  ],
+  "tags": ["ai-software-factory", "otel", "cost"]
+}

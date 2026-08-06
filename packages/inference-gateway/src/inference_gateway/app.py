@@ -1,4 +1,4 @@
-"""FastAPI OpenAI-compatible inference gateway skeleton."""
+"""FastAPI OpenAI-compatible inference gateway — live Granite + emergency fallback."""
 
 from __future__ import annotations
 
@@ -11,12 +11,13 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from agent_sdk.otel import ATTRS, factory_span, record_token_usage
 from inference_gateway.config import GatewaySettings
 
 
 def create_app(settings: GatewaySettings | None = None) -> FastAPI:
     settings = settings or GatewaySettings()
-    app = FastAPI(title="AI Software Factory Inference Gateway", version="0.1.0")
+    app = FastAPI(title="AI Software Factory Inference Gateway", version="0.6.0")
     app.state.settings = settings
 
     @app.get("/health")
@@ -26,6 +27,8 @@ def create_app(settings: GatewaySettings | None = None) -> FastAPI:
             "stub_mode": settings.stub_mode,
             "upstream_configured": bool(settings.upstream_url),
             "model": settings.upstream_model,
+            "inference_fallback": settings.inference_fallback,
+            "fallback_label": "emergency-only",
         }
 
     @app.post("/v1/chat/completions")
@@ -35,13 +38,47 @@ def create_app(settings: GatewaySettings | None = None) -> FastAPI:
             raise HTTPException(status_code=400, detail="JSON object required")
         model = body.get("model") or settings.upstream_model
         messages = body.get("messages") or []
+        run_id = None
+        if isinstance(body.get("factory"), dict):
+            run_id = body["factory"].get("run_id")
 
         if settings.stub_mode:
-            return JSONResponse(_stub_completion(model=model, messages=messages, fallback=False))
+            result = _stub_completion(model=model, messages=messages, fallback=False)
+            _emit_inference_span(
+                run_id=run_id,
+                model=model,
+                fallback=False,
+                usage=result.get("usage") or {},
+            )
+            return JSONResponse(result)
 
-        return JSONResponse(await _proxy_upstream(settings, body, model=model))
+        return JSONResponse(await _proxy_upstream(settings, body, model=model, run_id=run_id))
 
     return app
+
+
+def _emit_inference_span(
+    *,
+    run_id: str | None,
+    model: str,
+    fallback: bool,
+    usage: dict[str, Any],
+) -> None:
+    """Record inference.chat span with workshop.fallback / inference.fallback attrs."""
+    with factory_span(
+        "inference.chat",
+        run_id=run_id or "gateway",
+        model_id=model,
+        fallback=fallback,
+        stage="inference",
+        attributes={ATTRS.FALLBACK: bool(fallback), "inference.fallback": bool(fallback)},
+    ) as span:
+        record_token_usage(
+            span,
+            prompt_tokens=int(usage.get("prompt_tokens") or 0) or None,
+            completion_tokens=int(usage.get("completion_tokens") or 0) or None,
+            total_tokens=int(usage.get("total_tokens") or 0) or None,
+        )
 
 
 def _stub_completion(
@@ -55,10 +92,16 @@ def _stub_completion(
         if isinstance(msg, dict) and msg.get("role") == "user":
             last_user = str(msg.get("content", ""))
             break
-    content = (
-        "[inference-gateway stub] Live Granite path is configured via OSAI_* "
-        f"(model={model}). Echo: {last_user[:200]}"
-    )
+    if fallback:
+        content = (
+            "[EMERGENCY FALLBACK — not primary narrative] Recorded/local response "
+            f"(model={model}). Live Granite unreachable. Echo: {last_user[:200]}"
+        )
+    else:
+        content = (
+            "[inference-gateway stub] Live Granite path is configured via OSAI_* "
+            f"(model={model}). Echo: {last_user[:200]}"
+        )
     prompt_tokens = max(1, len(str(messages)) // 4)
     completion_tokens = max(1, len(content) // 4)
     return {
@@ -78,7 +121,11 @@ def _stub_completion(
             "completion_tokens": completion_tokens,
             "total_tokens": prompt_tokens + completion_tokens,
         },
-        "factory": {"fallback": fallback, "stub": True},
+        "factory": {
+            "fallback": fallback,
+            "stub": True,
+            "fallback_label": "emergency-only" if fallback else None,
+        },
     }
 
 
@@ -87,6 +134,7 @@ async def _proxy_upstream(
     body: dict[str, Any],
     *,
     model: str,
+    run_id: str | None = None,
 ) -> dict[str, Any]:
     headers: dict[str, str] = {"Content-Type": "application/json"}
     if settings.upstream_api_key:
@@ -117,6 +165,12 @@ async def _proxy_upstream(
                     # Live Granite path MUST surface usage tokens (normalize if upstream omits).
                     data["usage"] = _ensure_usage(data.get("usage"), body.get("messages"), data)
                     data["model"] = data.get("model") or model
+                    _emit_inference_span(
+                        run_id=run_id,
+                        model=str(data.get("model") or model),
+                        fallback=False,
+                        usage=data.get("usage") or {},
+                    )
                 return data
             except (httpx.HTTPError, httpx.TimeoutException) as exc:
                 last_error = exc
@@ -126,7 +180,18 @@ async def _proxy_upstream(
     if settings.inference_fallback:
         messages = body.get("messages") if isinstance(body.get("messages"), list) else []
         result = _stub_completion(model=model, messages=messages, fallback=True)
-        result["factory"] = {"fallback": True, "stub": True, "upstream_error": str(last_error)}
+        result["factory"] = {
+            "fallback": True,
+            "stub": True,
+            "fallback_label": "emergency-only",
+            "upstream_error": str(last_error),
+        }
+        _emit_inference_span(
+            run_id=run_id,
+            model=model,
+            fallback=True,
+            usage=result.get("usage") or {},
+        )
         return result
 
     raise HTTPException(

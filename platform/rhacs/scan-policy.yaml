@@ -1,0 +1,35 @@
+# Optional RHACS / TAS scan integration (PROFILE=full only)
+# ACM / multi-cluster is intentionally NOT referenced.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: asf-rhacs-scan-policy
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.profile: full
+data:
+  policy.yaml: |
+    name: asf-deep-scan
+    profile_gate: full
+    engines:
+      - rhacs
+      - tas
+    acm: false
+    notes: >
+      Deep image/policy scans run only when PROFILE=full.
+      Workshop MVP (PROFILE=standard) keeps placeholder Checks only.
+      Do not enable Advanced Cluster Management (ACM) for this workshop.
+---
+# Optional Quay mirror params (GHCR remains primary)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: asf-registry-publish
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+data:
+  primary: ghcr.io
+  optional_quay: "false"
+  notes: >
+    Set optional_quay=true only under PROFILE=full with QUAY_ORG configured.
+    Never treat Quay as the MVP primary registry.

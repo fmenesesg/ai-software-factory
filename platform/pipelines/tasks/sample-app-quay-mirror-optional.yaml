@@ -1,0 +1,38 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: sample-app-quay-mirror-optional
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.optional: quay
+spec:
+  description: >
+    OPTIONAL Quay mirror under PROFILE=full. GHCR remains the MVP primary registry.
+    Do not run this task as the default workshop publish path.
+  params:
+    - name: SOURCE_IMAGE
+      type: string
+      description: Already-pushed ghcr.io image@digest
+    - name: QUAY_IMAGE
+      type: string
+      description: quay.io/<org>/<name> destination (optional profile only)
+    - name: ENABLE_QUAY
+      type: string
+      default: "false"
+  results:
+    - name: QUAY_DIGEST
+      description: Digest when mirrored; empty when skipped
+  steps:
+    - name: mirror-or-skip
+      image: quay.io/skopeo/stable:latest
+      script: |
+        #!/bin/bash
+        set -euo pipefail
+        if [[ "$(params.ENABLE_QUAY)" != "true" ]]; then
+          echo "Quay mirror skipped (ENABLE_QUAY!=true); GHCR remains primary"
+          printf '' | tee "$(results.QUAY_DIGEST.path)"
+          exit 0
+        fi
+        skopeo copy "docker://$(params.SOURCE_IMAGE)" "docker://$(params.QUAY_IMAGE)"
+        # Digest evidence left empty in dry workshop path; live digest from skopeo inspect optional.
+        printf 'mirrored' | tee "$(results.QUAY_DIGEST.path)"
