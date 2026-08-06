@@ -70,6 +70,9 @@ Minimum scopes / fine-grained permissions for MVP:
 
 Deny or avoid: admin org, delete repos, force-push to protected `main`, unrelated org repos.
 
+Agent Deployment SAs and scoped token mounting are detailed in
+[`agent-tokens.md`](./agent-tokens.md) (M2) — **no cluster-admin** on agent SAs.
+
 ### GHCR (`GHCR_TOKEN`)
 
 - `write:packages` (or fine-grained package write) for `ghcr.io/<owner>/<image>`.

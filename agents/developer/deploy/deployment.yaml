@@ -1,0 +1,79 @@
+# Developer agent — least-privilege ServiceAccount (no cluster-admin)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: asf-agent-developer
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.agent: developer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asf-agent-developer
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.agent: developer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      asf.agent: developer
+  template:
+    metadata:
+      labels:
+        asf.agent: developer
+    spec:
+      serviceAccountName: asf-agent-developer
+      containers:
+        - name: developer
+          image: ghcr.io/fmenesesg/ai-software-factory-agent-developer:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: INFERENCE_GATEWAY_URL
+              value: http://asf-inference-gateway:8081
+            - name: OSAI_MODEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: asf-workshop-secrets
+                  key: OSAI_MODEL_ID
+                  optional: true
+            - name: MCP_GITHUB_URL
+              value: http://asf-mcp-github:8091
+            - name: MCP_GIT_URL
+              value: http://asf-mcp-git:8093
+            - name: MCP_FILESYSTEM_URL
+              value: http://asf-mcp-filesystem:8092
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: asf-workshop-secrets
+                  key: GITHUB_TOKEN
+            - name: DRY_RUN
+              value: "false"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asf-agent-developer
+spec:
+  selector:
+    asf.agent: developer
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

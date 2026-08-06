@@ -114,6 +114,9 @@ async def _proxy_upstream(
                     if isinstance(data["factory"], dict):
                         data["factory"]["fallback"] = False
                         data["factory"]["stub"] = False
+                    # Live Granite path MUST surface usage tokens (normalize if upstream omits).
+                    data["usage"] = _ensure_usage(data.get("usage"), body.get("messages"), data)
+                    data["model"] = data.get("model") or model
                 return data
             except (httpx.HTTPError, httpx.TimeoutException) as exc:
                 last_error = exc
@@ -130,6 +133,52 @@ async def _proxy_upstream(
         status_code=502,
         detail=f"upstream inference failed after retries: {last_error}",
     )
+
+
+def _ensure_usage(
+    usage: Any,
+    messages: Any,
+    data: dict[str, Any],
+) -> dict[str, int]:
+    """Guarantee prompt/completion/total token fields on completions."""
+    if isinstance(usage, dict):
+        prompt = int(usage.get("prompt_tokens") or 0)
+        completion = int(usage.get("completion_tokens") or 0)
+        total = int(usage.get("total_tokens") or (prompt + completion))
+        if total > 0 or prompt > 0 or completion > 0:
+            return {
+                "prompt_tokens": prompt or max(1, len(str(messages)) // 4),
+                "completion_tokens": completion
+                or max(
+                    1,
+                    len(str(((data.get("choices") or [{}])[0] or {}).get("message", {}))) // 4,
+                ),
+                "total_tokens": total
+                or (
+                    (prompt or max(1, len(str(messages)) // 4))
+                    + (
+                        completion
+                        or max(
+                            1,
+                            len(str(((data.get("choices") or [{}])[0] or {}).get("message", {})))
+                            // 4,
+                        )
+                    )
+                ),
+            }
+    prompt_tokens = max(1, len(str(messages)) // 4)
+    content = ""
+    choices = data.get("choices") if isinstance(data.get("choices"), list) else []
+    if choices and isinstance(choices[0], dict):
+        message = choices[0].get("message") or {}
+        if isinstance(message, dict):
+            content = str(message.get("content") or "")
+    completion_tokens = max(1, len(content) // 4)
+    return {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": prompt_tokens + completion_tokens,
+    }
 
 
 app = create_app()
