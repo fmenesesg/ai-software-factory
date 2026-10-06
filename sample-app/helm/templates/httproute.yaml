@@ -1,0 +1,23 @@
+{{- if .Values.httproute.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "sample-app.fullname" . }}
+  labels:
+    {{- include "sample-app.labels" . | nindent 4 }}
+    asf.profile: kind-oss
+spec:
+  parentRefs:
+    - name: {{ .Values.httproute.gatewayName | quote }}
+      namespace: {{ .Values.httproute.gatewayNamespace | quote }}
+  hostnames:
+    - {{ .Values.httproute.hostname | quote }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ .Values.httproute.pathPrefix | quote }}
+      backendRefs:
+        - name: {{ include "sample-app.fullname" . }}
+          port: {{ .Values.service.port }}
+{{- end }}

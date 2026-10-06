@@ -1,0 +1,20 @@
+# Tight RateLimit on the ASF Gateway — demo wow (429 under burst).
+# Prefer attaching a more specific policy to the inference-gateway HTTPRoute in live drills.
+---
+apiVersion: kuadrant.io/v1
+kind: RateLimitPolicy
+metadata:
+  name: asf-gateway-rlp
+  namespace: gateway-system
+  labels:
+    asf.demo: ratelimit
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: asf
+  limits:
+    "demo-wow":
+      rates:
+        - limit: 5
+          window: 10s
