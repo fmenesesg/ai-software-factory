@@ -30,8 +30,16 @@ persistence:
   mountPath: /opt/app/data
 
 route:
-  # OpenShift Route when available; Ingress annotation alternative for plain K8s.
+  # OpenShift Route when available (PROFILE=standard|full on OCP).
   enabled: true
   host: ""
 
-fullnamePrefix: asf-workshop-
+httproute:
+  # Gateway API HTTPRoute for PROFILE=kind-oss (Envoy Gateway + Kuadrant).
+  enabled: false
+  gatewayName: asf
+  gatewayNamespace: gateway-system
+  hostname: asf.demo.local
+  pathPrefix: /
+
+namespacePrefix: asf-workshop-

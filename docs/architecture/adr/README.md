@@ -20,9 +20,11 @@ Engram topic prefix: `sdd/ai-software-factory/adr-NNN`
 | 011 | Bootstrap-prompted secrets; no hardcode | `sdd/ai-software-factory/adr-011` |
 | 012 | Orders/inventory sample-app | `sdd/ai-software-factory/adr-012` |
 | 013 | Engram-only SDD store (no `openspec/`) | `sdd/ai-software-factory/adr-013` |
+| 014 | Kind OSS local platform (EG + Kuadrant) | `sdd/ai-software-factory/adr-014` (see [014-kind-oss.md](./014-kind-oss.md)) |
 
 Index observation (Engram): `sdd/ai-software-factory/adr-index`
 
 ## Status
 
-All listed ADRs: **Accepted** (design phase 2026-08-06).
+ADRs 001–013: **Accepted** (design phase 2026-08-06).  
+ADR-014: **Accepted** (Kind OSS pivot 2026-10-06).

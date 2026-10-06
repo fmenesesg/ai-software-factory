@@ -1,0 +1,13 @@
+# Envoy Gateway values for Kuadrant (N-S). Adapted from KCD Argentina demo.
+# Chart: oci://docker.io/envoyproxy/gateway-helm v1.7.0
+config:
+  envoyGateway:
+    gateway:
+      controllerName: gateway.envoyproxy.io/gatewayclass-controller
+    provider:
+      type: Kubernetes
+    logging:
+      level:
+        default: info
+    extensionApis:
+      enableEnvoyPatchPolicy: true

@@ -17,8 +17,9 @@ Guidance for coding agents and human contributors working in this monorepo.
 3. Agents call tools **only via MCP** for covered GitHub/FS/Git/OpenShift/K8s operations.
 4. Agents call inference **only via** `packages/inference-gateway` (no direct OSAI URLs in agent config).
 5. HITL authority is **GitHub only**; RHDH is visualization.
-6. Live **Granite** is the primary narrative; recorded/local fallback is emergency-only.
+6. Live **Granite** is the primary narrative on OCP (`PROFILE=standard|full`); recorded/local fallback is emergency-only. On **`PROFILE=kind-oss`**, host **Ollama + small open-weight models** are the primary inference path (ADR-014).
 7. Secrets are **bootstrap-prompted** — never hardcode cluster endpoints or tokens. Use `.env.example` as the parameter schema; never commit `.env`.
+8. Kind OSS edge is **Envoy Gateway + Kuadrant + cloud-provider-kind** (not Contour-as-Kuadrant provider, not MetalLB). Do not mutate unrelated Kind clusters (`kind-cluster`, `kind-west`).
 
 ## Package boundaries
 

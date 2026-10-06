@@ -1,0 +1,28 @@
+# North-south Gateway for Kind OSS. Listener :8080 for cloud-provider-kind + rootless Podman.
+# HTTPRoutes are owned by apps (sample-app Helm httproute, factory Ingresses later).
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway-system
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: asf
+  namespace: gateway-system
+  labels:
+    kuadrant.io/gateway: "true"
+    asf.profile: kind-oss
+spec:
+  gatewayClassName: eg
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 8080
+      hostname: asf.demo.local
+      allowedRoutes:
+        namespaces:
+          from: All

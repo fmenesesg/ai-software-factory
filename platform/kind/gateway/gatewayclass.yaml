@@ -1,0 +1,10 @@
+# GatewayClass for Envoy Gateway — Helm does NOT create this.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: eg
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.profile: kind-oss
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
