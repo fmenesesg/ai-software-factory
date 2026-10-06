@@ -64,9 +64,14 @@ Thumbs.db
 # Local workshop session artifacts
 .workshop/
 .session/
+.tmp/
+.run/
 tmp/
 temp/
 *.log
+
+# Kind OSS generated workloads (recreated by generate-workloads.sh)
+platform/kind/apps/factory-workloads.yaml
 
 # Sample-app local SQLite
 sample-app/db/*.db

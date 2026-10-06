@@ -21,6 +21,18 @@ def test_health_ok() -> None:
     assert body["stub_mode"] is True
 
 
+def test_list_models_stub() -> None:
+    settings = GatewaySettings(stub_mode=True, upstream_model="stub-small-model")
+    app = create_app(settings)
+    client = TestClient(app)
+    response = client.get("/v1/models")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["object"] == "list"
+    assert body["data"][0]["id"] == "stub-small-model"
+    assert body["data"][0]["stub_mode"] is True
+
+
 def test_stub_chat_completions() -> None:
     settings = GatewaySettings(stub_mode=True)
     app = create_app(settings)

@@ -51,10 +51,12 @@ Default OCP profile: `PROFILE=standard`. Laptop: `PROFILE=kind-oss`.
 
 ```bash
 export KIND_EXPERIMENTAL_PROVIDER=podman
-./scripts/kind-up.sh
-# hosts: 127.0.0.1 asf.demo.local
-# then Ollama on host + deploy apps with httproute.enabled=true
+./scripts/kind-stack-up.sh    # EG+Kuadrant + factory + sample-app
+./scripts/kind-stack-smoke.sh
+# UI: http://asf.demo.local:8080/status/
 ```
+
+See [docs/workshop/kind-oss.md](./docs/workshop/kind-oss.md).
 
 ## Spec-driven design (Engram)
 

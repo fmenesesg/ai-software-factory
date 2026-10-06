@@ -28,13 +28,31 @@ go install sigs.k8s.io/cloud-provider-kind@latest
 # ensure $(go env GOPATH)/bin is on PATH
 ```
 
-## Bring up edge
+## Bring up edge only
 
 ```bash
 export KIND_EXPERIMENTAL_PROVIDER=podman
 ./scripts/kind-up.sh
-
 echo '127.0.0.1 asf.demo.local' | sudo tee -a /etc/hosts
+```
+
+## Bring up full local stack (edge + agents + sample-app)
+
+```bash
+export KIND_EXPERIMENTAL_PROVIDER=podman
+./scripts/kind-stack-up.sh
+# first run builds images (several minutes)
+./scripts/kind-stack-smoke.sh
+```
+
+Open **http://asf.demo.local:8080/status/** for the agent health board.  
+Inference defaults to **stub mode** (no Ollama required). Sample app root: **http://asf.demo.local:8080/**.
+
+Tear down:
+
+```bash
+./scripts/kind-stack-down.sh           # workloads only
+./scripts/kind-stack-down.sh --cluster # + delete asf-kind
 ```
 
 Burst test (after EXTERNAL-IP / port-map is ready):
