@@ -1,0 +1,13 @@
+# Sample-app image for Kind OSS (no UBI pull required).
+FROM docker.io/library/python:3.12-slim-bookworm
+WORKDIR /opt/app
+COPY sample-app/backend/src/sample_app_backend /opt/app/sample_app_backend
+COPY sample-app/frontend /opt/app/frontend
+COPY sample-app/db/schema.sql /opt/app/db/schema.sql
+RUN pip install --no-cache-dir fastapi uvicorn pydantic
+ENV PYTHONPATH=/opt/app \
+    SAMPLE_APP_DB_PATH=/opt/app/data/sample.db \
+    FRONTEND_DIR=/opt/app/frontend
+RUN mkdir -p /opt/app/data
+EXPOSE 8080
+CMD ["python", "-m", "uvicorn", "sample_app_backend.main:app", "--host", "0.0.0.0", "--port", "8080"]

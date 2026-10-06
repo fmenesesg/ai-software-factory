@@ -31,6 +31,22 @@ def create_app(settings: GatewaySettings | None = None) -> FastAPI:
             "fallback_label": "emergency-only",
         }
 
+    @app.get("/v1/models")
+    async def list_models() -> dict[str, Any]:
+        """OpenAI-compatible model list (stub or configured upstream model id)."""
+        model_id = settings.upstream_model or "stub-small-model"
+        return {
+            "object": "list",
+            "data": [
+                {
+                    "id": model_id,
+                    "object": "model",
+                    "owned_by": "ai-software-factory",
+                    "stub_mode": settings.stub_mode,
+                }
+            ],
+        }
+
     @app.post("/v1/chat/completions")
     async def chat_completions(request: Request) -> JSONResponse:
         body = await request.json()

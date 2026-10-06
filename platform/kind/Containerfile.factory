@@ -1,0 +1,57 @@
+# Unified factory runtime for Kind OSS (PROFILE=kind-oss).
+# One image, many Deployments via ASF_UVICORN_APP + ASF_PORT.
+FROM docker.io/library/python:3.12-slim-bookworm
+
+WORKDIR /opt/asf
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml README.md ./
+COPY packages ./packages
+COPY agents ./agents
+COPY mcp ./mcp
+COPY platform/pipelines/src ./platform/pipelines/src
+COPY platform/gitops/src ./platform/gitops/src
+COPY platform/kind/status ./platform/kind/status
+
+RUN pip install --no-cache-dir \
+      fastapi uvicorn httpx pydantic pydantic-settings \
+      opentelemetry-api opentelemetry-sdk \
+      langgraph 'langgraph-checkpoint-postgres>=2.0' 'psycopg[binary]>=3.2' pyyaml
+
+
+ENV PYTHONPATH="/opt/asf/packages/agent-sdk/src:\
+/opt/asf/packages/inference-gateway/src:\
+/opt/asf/packages/orchestrator/src:\
+/opt/asf/platform/pipelines/src:\
+/opt/asf/platform/gitops/src:\
+/opt/asf/mcp/github/src:\
+/opt/asf/mcp/git/src:\
+/opt/asf/mcp/filesystem/src:\
+/opt/asf/mcp/kubernetes/src:\
+/opt/asf/mcp/openshift/src:\
+/opt/asf/mcp/developer-hub/src:\
+/opt/asf/agents/pm/src:\
+/opt/asf/agents/architect/src:\
+/opt/asf/agents/developer/src:\
+/opt/asf/agents/reviewer/src:\
+/opt/asf/agents/security/src:\
+/opt/asf/agents/qa/src:\
+/opt/asf/agents/documentation/src:\
+/opt/asf/agents/deployment/src:\
+/opt/asf/agents/sre/src:\
+/opt/asf/platform/kind/status"
+
+COPY platform/kind/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENV ASF_UVICORN_APP=inference_gateway.app:app \
+    ASF_PORT=8080
+
+EXPOSE 8080 8081 8090 8091 8092 8093 8095
+ENTRYPOINT ["/entrypoint.sh"]
