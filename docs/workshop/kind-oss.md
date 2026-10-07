@@ -20,8 +20,9 @@ Laptop-local AI Software Factory on **Kind + Podman**.
 | Registry | `asf-registry/registry:5000` |
 | CI | Tekton `sample-app-pr-kind` |
 | GitOps | Argo CD + HITL-gated Application stub |
-| Viz | Jaeger (`jaeger.asf.demo.local`) + OTel; Tekton Dashboard; Open WebUI |
+| Viz | Jaeger (`jaeger.asf.demo.local`) + OTel; Tekton Dashboard; Open WebUI; optional host [Laminar spike](laminar-spike.md) |
 | Trigger | Issue poller (`label=asf/run`) |
+| Code out | Developer agent → MCP fs/git/github → real PR on `asf-demo-app` (Quarkus Hello World template; `DRY_RUN=false`) |
 
 ## Prerequisites
 

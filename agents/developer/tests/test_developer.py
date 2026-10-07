@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture(autouse=True)
 def _skip_inference(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_SKIP_INFERENCE", "true")
+    monkeypatch.setenv("AGENT_DEVELOPER_STUB_PR", "true")
 
 
 def test_developer_blocked_without_approval() -> None:

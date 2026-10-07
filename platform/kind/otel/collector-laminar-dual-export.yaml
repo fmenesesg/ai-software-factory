@@ -1,6 +1,10 @@
-# OTel collector → Jaeger OTLP (Kind OSS agent traces). Official contrib image only.
-# Optional Laminar dual-export: apply collector-laminar-dual-export.yaml + Secret
-# (see docs/workshop/laminar-spike.md).
+# Spike overlay: dual-export OTLP → Jaeger + host Laminar (no agent changes).
+# Prerequisites: Laminar compose on host + Secret otel-laminar-apikey.
+# Docs: docs/workshop/laminar-spike.md
+#
+#   kubectl -n asf-observability create secret generic otel-laminar-apikey \
+#     --from-literal=project-api-key="$LAMINAR_PROJECT_API_KEY"
+#   kubectl apply -f platform/kind/otel/collector-laminar-dual-export.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -22,8 +26,14 @@ data:
     exporters:
       debug:
         verbosity: basic
-      otlp:
+      otlp/jaeger:
         endpoint: jaeger:4317
+        tls:
+          insecure: true
+      otlphttp/laminar:
+        endpoint: http://host.containers.internal:8000
+        headers:
+          Authorization: "Bearer ${env:LAMINAR_PROJECT_API_KEY}"
         tls:
           insecure: true
     service:
@@ -31,7 +41,7 @@ data:
         traces:
           receivers: [otlp]
           processors: [batch]
-          exporters: [debug, otlp]
+          exporters: [debug, otlp/jaeger, otlphttp/laminar]
         metrics:
           receivers: [otlp]
           processors: [batch]
@@ -52,10 +62,22 @@ spec:
       labels:
         app.kubernetes.io/name: otel-collector
     spec:
+      # Kind node resolves host.containers.internal; pods need hostAliases (podman).
+      hostAliases:
+        - ip: "169.254.1.2"
+          hostnames:
+            - host.containers.internal
+            - host.docker.internal
       containers:
         - name: collector
           image: docker.io/otel/opentelemetry-collector-contrib:0.162.0
           args: ["--config=/conf/config.yaml"]
+          env:
+            - name: LAMINAR_PROJECT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: otel-laminar-apikey
+                  key: project-api-key
           volumeMounts:
             - name: config
               mountPath: /conf
