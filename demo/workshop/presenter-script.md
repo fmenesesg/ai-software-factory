@@ -50,7 +50,7 @@ echo '127.0.0.1 asf.demo.local jaeger.asf.demo.local tekton.asf.demo.local chat.
 | 4 | HITL pause | Stage `hitl_waiting` until approval |
 | 5 | Approve Architect | Comment on the Issue: `asf-approve: demo-approval-1` (or set `HITL_STATIC_APPROVAL_ID`) |
 | 6 | Resume | Developer → Reviewer → Security → QA → Docs → Tekton ephemeral → promote wait |
-| 7 | Promote HITL | Remains blocked without `promote_approval_id` (GitOps gate) |
+| 7 | Promote HITL | Comment `asf-promote: demo-promote-1` → SRE completes (GitOps gate) |
 | 8 | Tear down | `./scripts/kind-stack-down.sh --cluster` |
 
 ## Watch execution

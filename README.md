@@ -53,7 +53,8 @@ echo '127.0.0.1 asf.demo.local jaeger.asf.demo.local tekton.asf.demo.local chat.
 
 Then create a GitHub Issue on [`fmenesesg/asf-demo-app`](https://github.com/fmenesesg/asf-demo-app) with label **`asf/run`**. Within ~30s the Issue gets an `asf-run-id` comment.
 
-To pass Architect HITL from the Issue, comment: `asf-approve: demo-approval-1`
+To pass Architect HITL from the Issue, comment: `asf-approve: demo-approval-1`  
+To pass promote HITL, comment: `asf-promote: demo-promote-1`
 
 | URL | What |
 |-----|------|
