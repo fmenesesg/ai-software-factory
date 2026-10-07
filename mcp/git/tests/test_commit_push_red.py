@@ -123,6 +123,34 @@ def test_dry_run_blocks_push_write(tmp_path: Path) -> None:
     assert called == []
 
 
+def test_deny_bad_branch_on_checkout(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    settings = GitMcpSettings(workspace_root=str(tmp_path))
+    tools = GitTools(settings)
+    with pytest.raises(GitSecurityError, match="invalid branch"):
+        tools.checkout(repo_path=str(repo), branch="--orphan")
+
+
+def test_deny_path_escape_on_add(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    settings = GitMcpSettings(workspace_root=str(tmp_path))
+    tools = GitTools(settings)
+    with pytest.raises(GitSecurityError, match="invalid path"):
+        tools.add(repo_path=str(repo), paths=["../evil.py"])
+
+
+def test_deny_clone_dirname_escape(tmp_path: Path) -> None:
+    settings = GitMcpSettings(
+        workspace_root=str(tmp_path),
+        allowed_remote="https://github.com/fmenesesg/asf-demo-app.git",
+    )
+    tools = GitTools(settings)
+    with pytest.raises(GitSecurityError, match="invalid clone dirname"):
+        tools.clone(dirname="../evil", remote_url="https://github.com/fmenesesg/asf-demo-app.git")
+
+
 def test_commit_dry_run_blocks_write(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()

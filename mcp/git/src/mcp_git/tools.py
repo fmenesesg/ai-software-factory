@@ -12,9 +12,12 @@ from agent_sdk.otel import factory_span
 from mcp_git.config import GitMcpSettings
 from mcp_git.security import (
     GitSecurityError,
+    assert_branch_name,
+    assert_clone_dirname,
     assert_no_force_push,
     assert_remote_allowed,
     assert_repo_path_allowed,
+    authenticated_https_remote,
     resolve_workspace_root,
 )
 
@@ -57,6 +60,21 @@ class GitTools:
                 "mutating": False,
             },
             {
+                "name": "git_clone",
+                "description": "Clone the allowed remote into workspace_root/<dirname>",
+                "mutating": True,
+            },
+            {
+                "name": "git_checkout",
+                "description": "Create/switch branch (git checkout -B <branch>)",
+                "mutating": True,
+            },
+            {
+                "name": "git_add",
+                "description": "Stage explicit paths (git add -- <paths>)",
+                "mutating": True,
+            },
+            {
                 "name": "git_commit",
                 "description": "Commit only explicitly staged paths (refuses empty index)",
                 "mutating": True,
@@ -75,6 +93,21 @@ class GitTools:
                 return self.select_repo(args.get("repo_path", ""))
             if name == "git_status":
                 return self.status(args.get("repo_path", ""))
+            if name == "git_clone":
+                return self.clone(
+                    dirname=str(args.get("dirname") or self.settings.github_repo),
+                    remote_url=str(args.get("remote_url") or self.allowed_remote),
+                )
+            if name == "git_checkout":
+                return self.checkout(
+                    repo_path=args.get("repo_path", ""),
+                    branch=str(args.get("branch") or ""),
+                )
+            if name == "git_add":
+                return self.add(
+                    repo_path=args.get("repo_path", ""),
+                    paths=list(args.get("paths") or []),
+                )
             if name == "git_commit":
                 return self.commit(
                     repo_path=args.get("repo_path", ""),
@@ -106,6 +139,80 @@ class GitTools:
             "returncode": result.returncode,
         }
 
+    def clone(self, *, dirname: str, remote_url: str) -> dict[str, Any]:
+        name = assert_clone_dirname(dirname)
+        assert_remote_allowed(remote_url, self.allowed_remote)
+        dest = (self.workspace_root / name).resolve()
+        try:
+            dest.relative_to(self.workspace_root)
+        except ValueError as exc:
+            raise GitSecurityError("clone destination escapes workspace_root") from exc
+
+        if dest.exists() and (dest / ".git").exists():
+            return {"ok": True, "repo_path": str(dest), "already_cloned": True}
+
+        if self.settings.dry_run:
+            return {
+                "ok": True,
+                "dry_run": True,
+                "blocked": True,
+                "reason": "dry_run",
+                "would_clone": {"remote_url": self.allowed_remote, "dirname": name},
+            }
+
+        self.workspace_root.mkdir(parents=True, exist_ok=True)
+        auth = authenticated_https_remote(self.allowed_remote, self.settings.github_token)
+        result = self.runner(["git", "clone", "--", auth, str(dest)], self.workspace_root)
+        if result.returncode != 0:
+            raise GitToolError(result.stderr or result.stdout or "git clone failed")
+        # Reset origin to credential-free URL so `git remote -v` does not leak tokens.
+        self.runner(["git", "remote", "set-url", "origin", self.allowed_remote], dest)
+        return {"ok": True, "dry_run": False, "repo_path": str(dest), "already_cloned": False}
+
+    def checkout(self, *, repo_path: str, branch: str) -> dict[str, Any]:
+        path = assert_repo_path_allowed(repo_path, self.workspace_root)
+        br = assert_branch_name(branch)
+        if self.settings.dry_run:
+            return {
+                "ok": True,
+                "dry_run": True,
+                "blocked": True,
+                "reason": "dry_run",
+                "would_checkout": br,
+            }
+        # -B: create or reset branch to HEAD (workshop worktrees are disposable).
+        result = self.runner(["git", "checkout", "-B", br], path)
+        if result.returncode != 0:
+            raise GitToolError(result.stderr or result.stdout or "git checkout failed")
+        return {"ok": True, "dry_run": False, "branch": br, "repo_path": str(path)}
+
+    def add(self, *, repo_path: str, paths: list[str]) -> dict[str, Any]:
+        path = assert_repo_path_allowed(repo_path, self.workspace_root)
+        cleaned: list[str] = []
+        for p in paths:
+            raw = str(p).strip()
+            # Do NOT use str.lstrip("./") — it strips any combo of those chars
+            # and would turn "../evil" into "evil".
+            while raw.startswith("./"):
+                raw = raw[2:]
+            if not raw or raw.startswith("-") or raw.startswith("/") or ".." in Path(raw).parts:
+                raise GitSecurityError(f"invalid path for git add: {p!r}")
+            cleaned.append(raw)
+        if not cleaned:
+            raise GitSecurityError("paths required for git add")
+        if self.settings.dry_run:
+            return {
+                "ok": True,
+                "dry_run": True,
+                "blocked": True,
+                "reason": "dry_run",
+                "would_add": cleaned,
+            }
+        result = self.runner(["git", "add", "--", *cleaned], path)
+        if result.returncode != 0:
+            raise GitToolError(result.stderr or result.stdout or "git add failed")
+        return {"ok": True, "dry_run": False, "paths": cleaned, "repo_path": str(path)}
+
     def commit(
         self,
         *,
@@ -126,7 +233,6 @@ class GitTools:
         if not staged_names:
             raise GitSecurityError("empty commit refused: nothing staged in index")
         if not requested.issubset(staged_names) and staged_names.isdisjoint(requested):
-            # Allow if caller listed paths that match staged; otherwise require overlap.
             raise GitSecurityError(
                 "commit refused: staged_paths do not match intentional staged index entries"
             )
@@ -140,6 +246,9 @@ class GitTools:
                 "would_commit": sorted(staged_names & requested) or sorted(staged_names),
             }
 
+        # Ensure identity for Kind pods (no interactive git config).
+        self.runner(["git", "config", "user.email", "asf-bot@localhost"], path)
+        self.runner(["git", "config", "user.name", "ASF Bot"], path)
         result = self.runner(["git", "commit", "-m", message, "--"] + sorted(requested), path)
         if result.returncode != 0:
             raise GitToolError(result.stderr or result.stdout or "git commit failed")
@@ -163,6 +272,18 @@ class GitTools:
         path = assert_repo_path_allowed(repo_path, self.workspace_root)
         assert_remote_allowed(remote_url, self.allowed_remote)
         assert_no_force_push(force, extra_args)
+        # ref may be HEAD or HEAD:refs/heads/branch — validate branch side if present.
+        push_ref = (ref or "HEAD").strip()
+        if not push_ref or push_ref.startswith("-"):
+            raise GitSecurityError(f"invalid ref: {ref!r}")
+        if ":" in push_ref:
+            local, remote = push_ref.split(":", 1)
+            if local not in {"HEAD", "head"} and not local.startswith("refs/"):
+                assert_branch_name(local)
+            if remote.startswith("refs/heads/"):
+                assert_branch_name(remote.removeprefix("refs/heads/"))
+            elif remote:
+                assert_branch_name(remote)
 
         if self.settings.dry_run:
             return {
@@ -170,18 +291,18 @@ class GitTools:
                 "dry_run": True,
                 "blocked": True,
                 "reason": "dry_run",
-                "would_push": {"remote_url": remote_url, "ref": ref},
+                "would_push": {"remote_url": self.allowed_remote, "ref": push_ref},
             }
 
-        # Structured argv only — never shell string concat.
-        argv = ["git", "push", remote_url, ref]
+        auth = authenticated_https_remote(self.allowed_remote, self.settings.github_token)
+        argv = ["git", "push", "--", auth, push_ref]
         result = self.runner(argv, path)
         if result.returncode != 0:
             raise GitToolError(result.stderr or result.stdout or "git push failed")
         return {
             "ok": True,
             "dry_run": False,
-            "remote_url": remote_url,
-            "ref": ref,
+            "remote_url": self.allowed_remote,
+            "ref": push_ref,
             "stdout": result.stdout,
         }

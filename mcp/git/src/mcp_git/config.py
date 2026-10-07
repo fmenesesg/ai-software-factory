@@ -12,6 +12,7 @@ class GitMcpSettings(BaseSettings):
     workspace_root: str = Field(default=".", validation_alias="WORKSPACE_ROOT")
     github_owner: str = Field(default="fmenesesg", validation_alias="GITHUB_OWNER")
     github_repo: str = Field(default="asf-demo-app", validation_alias="GITHUB_REPO")
+    github_token: str | None = Field(default=None, validation_alias="GITHUB_TOKEN")
     allowed_remote: str | None = Field(
         default=None,
         validation_alias="GIT_ALLOWED_REMOTE",

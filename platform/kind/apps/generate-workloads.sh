@@ -64,13 +64,16 @@ data:
   OSAI_INFERENCE_URL: "http://asf-inference-gateway:8081/v1"
   GATEWAY_STUB_MODE: "true"
   AGENT_SKIP_INFERENCE: "false"
-  DRY_RUN: "true"
+  # Live MCP for Kind OSS demo PRs into asf-demo-app (see docs/workshop/kind-oss.md).
+  DRY_RUN: "false"
   NAMESPACE_PREFIX: "asf-workshop-"
   MCP_GITHUB_URL: "http://asf-mcp-github:8091"
   MCP_FILESYSTEM_URL: "http://asf-mcp-filesystem:8092"
   MCP_GIT_URL: "http://asf-mcp-git:8093"
   MCP_KUBERNETES_URL: "http://asf-mcp-kubernetes:8095"
-  WORKSPACE_ROOT: "/tmp/asf-workspace"
+  WORKSPACE_ROOT: "/workspace"
+  FS_WRITABLE_ROOTS: "asf-demo-app"
+  FS_DOCS_LIKE_ROOTS: "asf-demo-app"
   ASF_AGENT_HTTP: "true"
   ORCHESTRATOR_URL: "http://asf-orchestrator:8080"
   ASF_ISSUE_LABEL: "asf/run"
@@ -78,6 +81,24 @@ data:
   ASF_STATUS_PUBLIC_URL: "http://asf.demo.local:8080"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.asf-observability:4318"
 HDR
+
+  # Shared clone/write workspace for mcp-filesystem + mcp-git (Developer live PR path).
+  cat <<'PVC'
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: asf-workspace
+  namespace: asf-factory
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+PVC
 
   for row in "${SERVICES[@]}"; do
     IFS='|' read -r name app port flag <<<"${row}"
@@ -94,6 +115,23 @@ HDR
                 configMapKeyRef:
                   name: asf-kind-config
                   key: OSAI_INFERENCE_URL
+E
+)
+    fi
+    volume_mounts=""
+    volumes=""
+    if [[ "${name}" == "asf-mcp-filesystem" || "${name}" == "asf-mcp-git" ]]; then
+      volume_mounts=$(cat <<'E'
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+E
+)
+      volumes=$(cat <<'E'
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: asf-workspace
 E
 )
     fi
@@ -117,6 +155,7 @@ spec:
       labels:
         app.kubernetes.io/name: ${name}
     spec:
+${volumes}
       containers:
         - name: app
           image: ${IMAGE}
@@ -124,6 +163,7 @@ spec:
           ports:
             - containerPort: ${port}
               name: http
+${volume_mounts}
           env:
             - name: ASF_UVICORN_APP
               value: "${app}"
@@ -179,11 +219,36 @@ spec:
                 configMapKeyRef:
                   name: asf-kind-config
                   key: MCP_GITHUB_URL
+            - name: MCP_FILESYSTEM_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: MCP_FILESYSTEM_URL
+            - name: MCP_GIT_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: MCP_GIT_URL
             - name: MCP_KUBERNETES_URL
               valueFrom:
                 configMapKeyRef:
                   name: asf-kind-config
                   key: MCP_KUBERNETES_URL
+            - name: WORKSPACE_ROOT
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: WORKSPACE_ROOT
+            - name: FS_WRITABLE_ROOTS
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: FS_WRITABLE_ROOTS
+            - name: FS_DOCS_LIKE_ROOTS
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: FS_DOCS_LIKE_ROOTS
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               valueFrom:
                 configMapKeyRef:
