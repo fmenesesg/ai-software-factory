@@ -36,7 +36,7 @@ def test_graph_boots_bootstrap_stage_event() -> None:
     result = graph.invoke(
         {
             "run_id": "run-m2",
-            "artifacts": {"issue_url": "https://github.com/fmenesesg/ai-software-factory/issues/1"},
+            "artifacts": {"issue_url": "https://github.com/fmenesesg/asf-demo-app/issues/1"},
         },
         config={"configurable": {"thread_id": "run-m2"}},
     )
@@ -53,7 +53,7 @@ def test_hitl_blocks_developer_without_approval() -> None:
     result = graph.invoke(
         {
             "run_id": "run-blocked",
-            "artifacts": {"issue_url": "https://github.com/fmenesesg/ai-software-factory/issues/1"},
+            "artifacts": {"issue_url": "https://github.com/fmenesesg/asf-demo-app/issues/1"},
         },
         config={"configurable": {"thread_id": "run-blocked"}},
     )
@@ -69,15 +69,18 @@ def test_hitl_advances_with_approval_id() -> None:
     result = graph.invoke(
         {
             "run_id": "run-ok",
-            "artifacts": {"issue_url": "https://github.com/fmenesesg/ai-software-factory/issues/1"},
+            "artifacts": {"issue_url": "https://github.com/fmenesesg/asf-demo-app/issues/1"},
             "hitl_reviews": [{"id": "review-99", "state": "APPROVED"}],
         },
         config={"configurable": {"thread_id": "run-ok"}},
     )
-    assert result["stage"] == "developer"
+    # After architect approval the full graph runs until GitOps promote HITL wait.
+    assert result["stage"] == "promote_waiting"
     assert result["artifacts"]["architect_approval_id"] == "review-99"
     assert result["artifacts"]["design_path"]
     assert result["artifacts"]["pr_url"]
+    assert result["artifacts"].get("pipeline_run_url")
+    assert result.get("error") == "promote_approval_required"
     assert poller.calls
 
 
@@ -89,7 +92,7 @@ def test_no_advance_without_inventing_approval() -> None:
     result = graph.invoke(
         {
             "run_id": "run-pending",
-            "artifacts": {"issue_url": "https://github.com/fmenesesg/ai-software-factory/issues/2"},
+            "artifacts": {"issue_url": "https://github.com/fmenesesg/asf-demo-app/issues/2"},
             "hitl_reviews": [{"id": "r1", "state": "COMMENTED"}],
         },
         config={"configurable": {"thread_id": "run-pending"}},

@@ -23,6 +23,7 @@ SERVICES=(
   "asf-mcp-filesystem|mcp_filesystem.server:app|8092|"
   "asf-mcp-git|mcp_git.server:app|8093|"
   "asf-mcp-kubernetes|mcp_kubernetes.server:app|8095|"
+  "asf-issue-poller|issue_poller.app:app|8096|"
 )
 
 {
@@ -46,9 +47,12 @@ metadata:
 type: Opaque
 stringData:
   OSAI_MODEL_ID: "stub-small-model"
+  # GITHUB_TOKEN omitted so re-apply does not wipe a live PAT. Bootstrap with:
+  #   kubectl -n asf-factory create secret generic asf-workshop-secrets \
+  #     --from-literal=GITHUB_TOKEN=... --dry-run=client -o yaml | kubectl apply -f -
   GITHUB_TOKEN: "kind-local-unused"
   GITHUB_OWNER: "fmenesesg"
-  GITHUB_REPO: "ai-software-factory"
+  GITHUB_REPO: "asf-demo-app"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -67,6 +71,12 @@ data:
   MCP_GIT_URL: "http://asf-mcp-git:8093"
   MCP_KUBERNETES_URL: "http://asf-mcp-kubernetes:8095"
   WORKSPACE_ROOT: "/tmp/asf-workspace"
+  ASF_AGENT_HTTP: "true"
+  ORCHESTRATOR_URL: "http://asf-orchestrator:8080"
+  ASF_ISSUE_LABEL: "asf/run"
+  ASF_ISSUE_POLL_SECONDS: "15"
+  ASF_STATUS_PUBLIC_URL: "http://asf.demo.local:8080"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.asf-observability:4318"
 HDR
 
   for row in "${SERVICES[@]}"; do
@@ -139,6 +149,50 @@ spec:
                 configMapKeyRef:
                   name: asf-kind-config
                   key: AGENT_SKIP_INFERENCE
+            - name: ASF_AGENT_HTTP
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: ASF_AGENT_HTTP
+            - name: ORCHESTRATOR_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: ORCHESTRATOR_URL
+            - name: ASF_ISSUE_LABEL
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: ASF_ISSUE_LABEL
+            - name: ASF_ISSUE_POLL_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: ASF_ISSUE_POLL_SECONDS
+            - name: ASF_STATUS_PUBLIC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: ASF_STATUS_PUBLIC_URL
+            - name: MCP_GITHUB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: MCP_GITHUB_URL
+            - name: MCP_KUBERNETES_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: MCP_KUBERNETES_URL
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: asf-kind-config
+                  key: OTEL_EXPORTER_OTLP_ENDPOINT
+            - name: OTEL_SERVICE_NAME
+              value: ${name}
+            - name: ASF_PROFILE
+              value: kind-oss
             - name: OSAI_MODEL_ID
               valueFrom:
                 secretKeyRef:

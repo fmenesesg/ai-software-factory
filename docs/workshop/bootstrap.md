@@ -32,7 +32,7 @@ Missing MUST fields fail **before** any cluster mutate. `--dry-run` skips sessio
 | `OSAI_MODEL_ID` | MUST | Default docs placeholder: `ibm/granite-*-instruct` |
 | `OSAI_API_KEY` | MAY | Only if the inference endpoint requires it |
 | `GITHUB_TOKEN` | MUST | Scoped least-privilege (checklist below) |
-| `GITHUB_OWNER` / `GITHUB_REPO` | MUST | Default `fmenesesg` / `ai-software-factory` |
+| `GITHUB_OWNER` / `GITHUB_REPO` | MUST | Default `fmenesesg` / `asf-demo-app` (Issue trigger target) |
 | `GHCR_TOKEN` | MUST | Write auth for `ghcr.io` image push |
 | `RHDH_URL` / `RHDH_TOKEN` | SHOULD | Visualization only — not HITL authority |
 | `GITOPS_REPO_URL` | SHOULD | Promote target (MVP may use monorepo `platform/gitops/`) |

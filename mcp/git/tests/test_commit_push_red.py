@@ -31,7 +31,7 @@ def test_refuse_empty_commit_success(tmp_path: Path) -> None:
     repo.mkdir()
     settings = GitMcpSettings(
         workspace_root=str(tmp_path),
-        allowed_remote="https://github.com/fmenesesg/ai-software-factory.git",
+        allowed_remote="https://github.com/fmenesesg/asf-demo-app.git",
         dry_run=False,
     )
     runner = _runner_factory(
@@ -60,13 +60,13 @@ def test_deny_force_push(tmp_path: Path) -> None:
     repo.mkdir()
     settings = GitMcpSettings(
         workspace_root=str(tmp_path),
-        allowed_remote="https://github.com/fmenesesg/ai-software-factory.git",
+        allowed_remote="https://github.com/fmenesesg/asf-demo-app.git",
     )
     tools = GitTools(settings)
     with pytest.raises(GitSecurityError, match="force"):
         tools.push(
             repo_path=str(repo),
-            remote_url="https://github.com/fmenesesg/ai-software-factory.git",
+            remote_url="https://github.com/fmenesesg/asf-demo-app.git",
             force=True,
         )
 
@@ -76,13 +76,13 @@ def test_deny_force_extra_args(tmp_path: Path) -> None:
     repo.mkdir()
     settings = GitMcpSettings(
         workspace_root=str(tmp_path),
-        allowed_remote="https://github.com/fmenesesg/ai-software-factory.git",
+        allowed_remote="https://github.com/fmenesesg/asf-demo-app.git",
     )
     tools = GitTools(settings)
     with pytest.raises(GitSecurityError, match="force"):
         tools.push(
             repo_path=str(repo),
-            remote_url="https://github.com/fmenesesg/ai-software-factory.git",
+            remote_url="https://github.com/fmenesesg/asf-demo-app.git",
             extra_args=["--force-with-lease"],
         )
 
@@ -92,7 +92,7 @@ def test_deny_wrong_remote_on_push(tmp_path: Path) -> None:
     repo.mkdir()
     settings = GitMcpSettings(
         workspace_root=str(tmp_path),
-        allowed_remote="https://github.com/fmenesesg/ai-software-factory.git",
+        allowed_remote="https://github.com/fmenesesg/asf-demo-app.git",
     )
     tools = GitTools(settings)
     with pytest.raises(GitSecurityError, match="wrong remote"):
@@ -104,7 +104,7 @@ def test_dry_run_blocks_push_write(tmp_path: Path) -> None:
     repo.mkdir()
     settings = GitMcpSettings(
         workspace_root=str(tmp_path),
-        allowed_remote="https://github.com/fmenesesg/ai-software-factory.git",
+        allowed_remote="https://github.com/fmenesesg/asf-demo-app.git",
         dry_run=True,
     )
     called: list[list[str]] = []
@@ -116,7 +116,7 @@ def test_dry_run_blocks_push_write(tmp_path: Path) -> None:
     tools = GitTools(settings, runner=runner)
     result = tools.push(
         repo_path=str(repo),
-        remote_url="https://github.com/fmenesesg/ai-software-factory.git",
+        remote_url="https://github.com/fmenesesg/asf-demo-app.git",
     )
     assert result["blocked"] is True
     assert result["dry_run"] is True

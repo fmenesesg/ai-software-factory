@@ -2,6 +2,7 @@
 
 **Status:** Accepted  
 **Date:** 2026-10-06  
+**Updated:** 2026-10-07  
 **Engram:** `sdd/ai-software-factory/adr-014`
 
 ## Context
@@ -17,9 +18,10 @@ KCD Argentina 2026 already proved Envoy Gateway + Kuadrant on Kind+Podman with `
 3. LoadBalancer: **`cloud-provider-kind --enable-lb-port-mapping`** (not MetalLB; not Contour-for-Kuadrant).
 4. Single Kind cluster name: **`asf-kind`** (never mutate unrelated `kind-cluster` / `kind-west`).
 5. Inference: **Ollama (or compatible) on the host** with **small models**; gateway remains OpenAI-compatible (`GATEWAY_STUB_MODE=false`, `OSAI_INFERENCE_URL` → local).
-6. Agent visualization: **Langfuse** (MIT self-host) preferred; Phoenix only if ELv2 is accepted for weight.
-7. **Out of Kind OSS scope:** OpenShift AI, RHDH product, RHACS/TAS product, Quay-required, Contour-as-Kuadrant-provider, Linkerd, Skupper, multi-site DNS HA (unless later ADR).
-8. Sample-app exposes **HTTPRoute** (Gateway API) when `httproute.enabled`; OpenShift **Route** remains optional for OCP profiles.
+6. Agent visualization: **Jaeger 2** (Apache-2.0, official `jaegertracing/jaeger` image, native OTLP) + status board + `/orch/v1/runs`. Agents export OTLP only; collector forwards to Jaeger — **no custom exporters**.
+7. **Rejected for Kind:** self-hosted Langfuse 2.x (stale) or Langfuse 3/4 (needs worker + Postgres + Redis + ClickHouse + object storage). **Phoenix** (Arize) is LLM-native but ELv2 — skip unless license is accepted later.
+8. **Out of Kind OSS scope:** OpenShift AI, RHDH product, RHACS/TAS product, Quay-required, Contour-as-Kuadrant-provider, Linkerd, Skupper, multi-site DNS HA (unless later ADR).
+9. Sample-app exposes **HTTPRoute** (Gateway API) when `httproute.enabled`; OpenShift **Route** remains optional for OCP profiles.
 
 ## Consequences
 
@@ -27,3 +29,4 @@ KCD Argentina 2026 already proved Envoy Gateway + Kuadrant on Kind+Podman with `
 - Demo wow includes Kuadrant **429** on inference paths (tight RateLimitPolicy).
 - Resource pressure is managed via small models + optional agent request limits; docs describe 32 GB as full-stack baseline.
 - OCP workshop path (`PROFILE=standard|full`) remains valid; Kind is additive, not a replacement of the RH narrative when a cluster is available.
+- Trace UI is standard distributed tracing (Jaeger), not LLM prompt/score dashboards.

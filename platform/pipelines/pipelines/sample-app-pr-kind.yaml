@@ -1,0 +1,43 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: sample-app-pr-kind
+  namespace: asf-factory
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.profile: kind-oss
+spec:
+  description: >
+    Kind OSS path: deploy preloaded sample-app image into ephemeral ns (skip ghcr push).
+  params:
+    - name: IMAGE
+      type: string
+      default: localhost/asf-sample-app:kind
+    - name: NAMESPACE_PREFIX
+      type: string
+      default: asf-workshop-
+    - name: PR_NUMBER
+      type: string
+    - name: IMAGE_DIGEST
+      type: string
+      default: "sha256:kind-local"
+  results:
+    - name: EPHEMERAL_URL
+      value: $(tasks.deploy-ephemeral.results.EPHEMERAL_URL)
+    - name: NAMESPACE
+      value: $(tasks.deploy-ephemeral.results.NAMESPACE)
+  tasks:
+    - name: deploy-ephemeral
+      taskRef:
+        name: sample-app-deploy-ephemeral-kind
+      params:
+        - name: IMAGE
+          value: $(params.IMAGE)
+        - name: IMAGE_DIGEST
+          value: $(params.IMAGE_DIGEST)
+        - name: NAMESPACE
+          value: $(params.NAMESPACE_PREFIX)pr-$(params.PR_NUMBER)
+        - name: NAMESPACE_PREFIX
+          value: $(params.NAMESPACE_PREFIX)
+        - name: PR_NUMBER
+          value: $(params.PR_NUMBER)

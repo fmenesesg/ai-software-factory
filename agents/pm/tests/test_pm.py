@@ -20,7 +20,7 @@ def test_pm_health_and_invoke() -> None:
         "/v1/invoke",
         json={
             "run_id": "r1",
-            "artifacts": {"issue_url": "https://github.com/fmenesesg/ai-software-factory/issues/1"},
+            "artifacts": {"issue_url": "https://github.com/fmenesesg/asf-demo-app/issues/1"},
             "input": {"acceptance_notes": "Must ship HITL gate"},
         },
     )

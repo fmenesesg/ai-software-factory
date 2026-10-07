@@ -2,14 +2,14 @@
 profile: kind-oss
 description: >
   Single Kind cluster (asf-kind) with Envoy Gateway + Kuadrant (KCD BA N-S pattern),
-  full agent set when RAM allows, Ollama small models on host, Langfuse viz.
+  full agent set when RAM allows, Ollama small models on host, Jaeger + OTel viz.
   Not Contour; not MetalLB; not OpenShift AI / RHDH / RHACS products.
 
 components:
   orchestrator: true
   inference_gateway: true
   observability_otel: true
-  langfuse: true
+  jaeger: true
   agents:
     pm: true
     architect: true
@@ -26,7 +26,7 @@ components:
     git: true
     openshift: false          # use kubernetes + Gateway HTTPRoute
     kubernetes: true
-    developer_hub: false    # RHDH product out; Langfuse covers agent viz
+    developer_hub: false    # RHDH product out; Jaeger + status board cover agent viz
   pipelines_tekton: true
   ephemeral_namespaces: true
   gitops_promote_hitl: true

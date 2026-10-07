@@ -1,0 +1,94 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: sample-app-deploy-ephemeral-kind
+  namespace: asf-factory
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+    asf.profile: kind-oss
+spec:
+  description: >
+    Kind OSS ephemeral deploy: apply Deployment/Service for sample-app using an
+    already-loaded or registry image; emit cluster-local URL (no OpenShift Route).
+  # serviceAccountName is set on PipelineRun (taskRunTemplate), not Task.
+  params:
+    - name: IMAGE
+      type: string
+      default: localhost/asf-sample-app:kind
+    - name: IMAGE_DIGEST
+      type: string
+      default: ""
+    - name: NAMESPACE
+      type: string
+    - name: NAMESPACE_PREFIX
+      type: string
+      default: asf-workshop-
+    - name: PR_NUMBER
+      type: string
+      default: "0"
+  results:
+    - name: EPHEMERAL_URL
+    - name: NAMESPACE
+  steps:
+    - name: assert-prefix
+      image: docker.io/library/alpine:3.20
+      script: |
+        #!/bin/sh
+        set -eu
+        NS="$(params.NAMESPACE)"
+        PREFIX="$(params.NAMESPACE_PREFIX)"
+        case "${NS}" in
+          "${PREFIX}"*) ;;
+          *)
+            echo "namespace ${NS} is outside NAMESPACE_PREFIX=${PREFIX}" >&2
+            exit 1
+            ;;
+        esac
+        printf '%s' "${NS}" > "$(results.NAMESPACE.path)"
+    - name: deploy
+      # Preloaded by kind-stack-platform.sh (rootless Kind cannot pull freely mid-run).
+      image: docker.io/alpine/k8s:1.33.13
+      script: |
+        #!/bin/bash
+        set -euo pipefail
+        NS="$(params.NAMESPACE)"
+        IMAGE="$(params.IMAGE)"
+        kubectl create namespace "${NS}" --dry-run=client -o yaml | kubectl apply -f -
+        cat <<EOF | kubectl apply -f -
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: sample-app
+          namespace: ${NS}
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: sample-app
+          template:
+            metadata:
+              labels:
+                app: sample-app
+            spec:
+              containers:
+                - name: app
+                  image: ${IMAGE}
+                  imagePullPolicy: IfNotPresent
+                  ports:
+                    - containerPort: 8080
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: sample-app
+          namespace: ${NS}
+        spec:
+          selector:
+            app: sample-app
+          ports:
+            - port: 8080
+              targetPort: 8080
+        EOF
+        kubectl -n "${NS}" rollout status deploy/sample-app --timeout=120s
+        URL="http://sample-app.${NS}.svc.cluster.local:8080"
+        printf '%s' "${URL}" > "$(results.EPHEMERAL_URL.path)"

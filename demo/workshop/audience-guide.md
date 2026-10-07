@@ -1,23 +1,22 @@
 # Audience guide — observe only
 
-You are attending a **presenter-led** workshop. You do **not** need cluster credentials, GitHub tokens, or a personal lab environment.
+You are attending a **presenter-led** demo. You do **not** need cluster credentials or GitHub tokens.
 
 ## What you will watch
 
-- A single presenter bootstraps the AI Software Factory session.
-- Agents (PM → Architect → Developer → Reviewer → …) hand off **artifact IDs** through LangGraph.
-- **GitHub** is the only HITL authority (reviews / approvals / promote PRs).
-- **Tekton** builds, tests, pushes to **ghcr.io**, and deploys an ephemeral namespace.
-- **RHDH** shows pipeline/check status for visualization — it does not approve promote.
+- The presenter creates a **GitHub Issue** with label `asf/run`.
+- The Kind stack poller starts an orchestrator run (`asf-run-id` comment on the Issue).
+- Agents hand off artifacts: PM → Architect → **GitHub HITL** → Developer → Reviewer → Security → QA → Docs → Tekton ephemeral → GitOps promote gate → SRE.
+- **GitHub** is the only HITL authority.
+- **Jaeger** + the status board show run/agent health (not RHDH on this laptop path).
 
 ## What you should not do
 
 - Do not run bootstrap or mutate the cluster.
 - Do not paste or request secrets in chat.
-- Do not treat recorded/local Granite as the main story — that path is **emergency-only**.
 
 ## Useful links (presenter will open)
 
-- Architecture overview: `docs/architecture/overview.md`
-- Bootstrap docs: `docs/workshop/bootstrap.md`
+- Status: http://asf.demo.local:8080/status/
+- Jaeger: http://jaeger.asf.demo.local:8080/
 - Presenter script: `demo/workshop/presenter-script.md`

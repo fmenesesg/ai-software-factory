@@ -6,9 +6,11 @@ CTX="kind-${ASF_KIND_CLUSTER:-asf-kind}"
 FULL="${1:-}"
 
 kubectl --context "${CTX}" delete ns asf-factory --ignore-not-found --wait=false 2>/dev/null || true
+kubectl --context "${CTX}" delete ns asf-observability --ignore-not-found --wait=false 2>/dev/null || true
+kubectl --context "${CTX}" delete ns asf-registry --ignore-not-found --wait=false 2>/dev/null || true
 
 if [[ "${FULL}" == "--cluster" ]]; then
   "${ROOT}/scripts/kind-down.sh"
 else
-  printf 'kind-stack-down: removed ns asf-factory (edge Kind cluster kept). Use --cluster to delete asf-kind.\n'
+  printf 'kind-stack-down: removed asf-factory/observability/registry (Kind cluster kept). Use --cluster to delete asf-kind.\n'
 fi
