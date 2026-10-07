@@ -10,6 +10,7 @@ metadata:
   annotations:
     asf.ai/sync-evidence-field: sync_evidence
     asf.ai/hitl: github-promote-approval
+    asf.ai/sync_evidence: ""
 spec:
   project: default
   source:
@@ -23,6 +24,3 @@ spec:
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
-status:
-  # Populated by orchestrator/gitops helper after HITL — field name: sync_evidence
-  sync_evidence: ""

@@ -30,6 +30,30 @@ prereq() {
   fi
 }
 
+# Rootless Podman + many Services: kube-proxy iptables hits
+# "iptables-restore: Message too long" → ClusterIP/NodePort die → CCM :8080 empty reply.
+ensure_kube_proxy_nftables() {
+  local mode
+  mode="$(kubectl --context "${CTX}" -n kube-system get cm kube-proxy \
+    -o jsonpath='{.data.config\.conf}' 2>/dev/null | awk '/^mode:/{print $2; exit}')"
+  if [[ "${mode}" == "nftables" ]]; then
+    printf 'kind-up: kube-proxy already mode=nftables\n'
+    return 0
+  fi
+  printf 'kind-up: switching kube-proxy to nftables (was %s)\n' "${mode:-unset}"
+  kubectl --context "${CTX}" -n kube-system get cm kube-proxy -o jsonpath='{.data.config\.conf}' \
+    | sed 's/^mode: .*/mode: nftables/' >/tmp/asf-kube-proxy.conf
+  kubectl --context "${CTX}" -n kube-system create cm kube-proxy \
+    --from-file=config.conf=/tmp/asf-kube-proxy.conf \
+    --from-file=kubeconfig.conf=<(kubectl --context "${CTX}" -n kube-system get cm kube-proxy \
+      -o jsonpath='{.data.kubeconfig\.conf}') \
+    -o yaml --dry-run=client | kubectl --context "${CTX}" apply -f -
+  rm -f /tmp/asf-kube-proxy.conf
+  kubectl --context "${CTX}" -n kube-system delete po -l k8s-app=kube-proxy --wait=false
+  kubectl --context "${CTX}" -n kube-system rollout status ds/kube-proxy --timeout=90s 2>/dev/null \
+    || kubectl --context "${CTX}" -n kube-system wait --for=condition=Ready po -l k8s-app=kube-proxy --timeout=90s
+}
+
 ensure_cluster() {
   if kind get clusters 2>/dev/null | grep -qx "${CLUSTER_NAME}"; then
     printf 'kind-up: cluster %s exists — skip create\n' "${CLUSTER_NAME}"
@@ -37,6 +61,7 @@ ensure_cluster() {
     printf 'kind-up: creating Kind cluster %s (provider=%s)\n' "${CLUSTER_NAME}" "${KIND_EXPERIMENTAL_PROVIDER}"
     kind create cluster --name "${CLUSTER_NAME}" --config "${KIND_DIR}/kind-config.yaml"
   fi
+  ensure_kube_proxy_nftables
   asf_kind_enable_loadbalancer "${CLUSTER_NAME}"
 }
 
@@ -71,7 +96,7 @@ install_kuadrant() {
 
 apply_gateway_policies() {
   kubectl --context "${CTX}" apply -f "${GATEWAY_DIR}/gateway.yaml"
-  kubectl --context "${CTX}" apply -f "${KUADRANT_DIR}/ratelimitpolicy.yaml"
+  # RateLimitPolicy deferred — Kuadrant stays installed as gateway control plane only.
 }
 
 main() {
@@ -88,13 +113,11 @@ kind-up: edge ready (PROFILE=kind-oss)
 
   Cluster:  ${CLUSTER_NAME} (context ${CTX})
   Gateway:  asf.demo.local:8080  (add to /etc/hosts → 127.0.0.1)
-  RateLimit: 5 req / 10s on Gateway asf (expect HTTP 429 under burst)
+  Edge:     Envoy Gateway + Kuadrant (RateLimitPolicy not applied by default)
 
 Next:
   1. echo '127.0.0.1 asf.demo.local' | sudo tee -a /etc/hosts
-  2. Start Ollama on host with a small model; set OSAI_INFERENCE_URL (see docs/workshop/kind-oss.md)
-  3. Deploy factory + sample-app with HTTPRoute parentRefs → gateway-system/asf
-  4. Optional: Langfuse for agent traces
+  2. ./scripts/kind-stack-up.sh   # full factory + Issue poller
 
 EOF
 }

@@ -1,0 +1,49 @@
+# In-cluster registry for Kind Tekton pushes (PROFILE=kind-oss).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: asf-registry
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registry
+  namespace: asf-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: registry
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: registry
+    spec:
+      containers:
+        - name: registry
+          image: docker.io/library/registry:2.8.3
+          ports:
+            - containerPort: 5000
+              name: http
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry
+  namespace: asf-registry
+spec:
+  selector:
+    app.kubernetes.io/name: registry
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http

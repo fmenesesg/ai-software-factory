@@ -1,5 +1,7 @@
 # North-south Gateway for Kind OSS. Listener :8080 for cloud-provider-kind + rootless Podman.
-# HTTPRoutes are owned by apps (sample-app Helm httproute, factory Ingresses later).
+# Apex + wildcard so Jaeger / Tekton Dashboard / Open WebUI can use subdomains (SPA
+# apps break behind path-prefix rewrites — assets request /_next/* at the host root).
+# HTTPRoutes are owned by apps.
 ---
 apiVersion: v1
 kind: Namespace
@@ -23,6 +25,13 @@ spec:
       protocol: HTTP
       port: 8080
       hostname: asf.demo.local
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: http-star
+      protocol: HTTP
+      port: 8080
+      hostname: "*.asf.demo.local"
       allowedRoutes:
         namespaces:
           from: All

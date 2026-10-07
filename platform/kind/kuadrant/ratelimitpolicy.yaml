@@ -1,5 +1,5 @@
-# Tight RateLimit on the ASF Gateway — demo wow (429 under burst).
-# Prefer attaching a more specific policy to the inference-gateway HTTPRoute in live drills.
+# Optional — NOT applied by kind-up by default (gateway-only for now).
+# Apply later when you want a RateLimit wow: kubectl apply -f this file.
 ---
 apiVersion: kuadrant.io/v1
 kind: RateLimitPolicy

@@ -98,3 +98,11 @@ def factory_span(name: str, **kwargs: Any) -> Iterator[Span]:
         raise
     finally:
         span.end()
+        # Kind OSS demo: flush promptly so Jaeger UI updates without waiting for batch timer.
+        try:
+            provider = trace.get_tracer_provider()
+            force_flush = getattr(provider, "force_flush", None)
+            if callable(force_flush):
+                force_flush(timeout_millis=3000)
+        except Exception:  # noqa: BLE001
+            pass

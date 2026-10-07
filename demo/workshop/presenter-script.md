@@ -1,45 +1,68 @@
-# Presenter script — AI Software Factory workshop
+# Presenter script — Kind OSS demo
 
 **Venue:** one presenter executes; audience observes.  
-**Language:** English. **License:** Apache-2.0.
+**Acceptance:** open a GitHub Issue with label `asf/run` → factory run starts on Kind.
 
 ## Before the room
 
-1. Copy `.env.example` → `.env` (never commit secrets).
-2. Confirm `PROFILE=standard` for the MVP narrative (use `full` only for RHACS/Quay optional path).
-3. Dry-run bootstrap:
+1. Tools on PATH: `kind kubectl helm cloud-provider-kind podman`
+2. Export a GitHub token (Issues + PR read/write on the demo repo):
 
 ```bash
-./scripts/workshop-bootstrap.sh --dry-run
-./demo/workshop/run-slice.sh --help
+export GITHUB_TOKEN=ghp_...
+export GITHUB_OWNER=fmenesesg
+export GITHUB_REPO=asf-demo-app
 ```
 
-4. Verify live Granite path: `GATEWAY_STUB_MODE=false`, `OSAI_*` set.  
-   Keep `INFERENCE_FALLBACK=false` unless rehearsing the **emergency-only** drill.
+3. Bring up the stack (first run builds images):
 
-## Live slice (talk track)
+```bash
+export KIND_EXPERIMENTAL_PROVIDER=podman
+./scripts/kind-stack-up.sh
+./scripts/kind-stack-smoke.sh
+```
+
+4. Install the live token into the cluster Secret:
+
+```bash
+kubectl --context kind-asf-kind -n asf-factory create secret generic asf-workshop-secrets \
+  --from-literal=GITHUB_TOKEN="$GITHUB_TOKEN" \
+  --from-literal=GITHUB_OWNER="${GITHUB_OWNER:-fmenesesg}" \
+  --from-literal=GITHUB_REPO="${GITHUB_REPO:-asf-demo-app}" \
+  --from-literal=OSAI_MODEL_ID=stub-small-model \
+  --dry-run=client -o yaml | kubectl --context kind-asf-kind apply -f -
+kubectl --context kind-asf-kind -n asf-factory rollout restart deploy/asf-issue-poller deploy/asf-orchestrator deploy/asf-mcp-github
+```
+
+5. Hosts (optional for browsers):
+
+```bash
+echo '127.0.0.1 asf.demo.local jaeger.asf.demo.local tekton.asf.demo.local chat.asf.demo.local' | sudo tee -a /etc/hosts
+```
+
+## Live talk track
 
 | Step | Action | Audience sees |
 |------|--------|---------------|
-| 1 | Bootstrap session | Secrets land in session Secrets — not in git |
-| 2 | Seed GitHub Issue | Issue URL becomes `issue_url` |
-| 3 | Start orchestrator run | PM → Architect artifacts |
-| 4 | Architect HITL on GitHub | Approval gates Developer |
-| 5 | Developer PR | PR URL + Reviewer light |
-| 6 | Tekton → GHCR → ephemeral | PR Check + URL + ns under `NAMESPACE_PREFIX` |
-| 7 | GitOps promote HITL | No prod-like sync without approval |
-| 8 | RHDH component | Visualization only — not HITL |
-| 9 | Optional: docs/deploy/SRE agents | TechDocs notes, pipeline evidence, SLO notes |
-| 10 | Teardown + revoke | `scripts/teardown-ephemeral.sh` + secrets checklist |
+| 1 | Open status + Jaeger (+ optional Tekton / chat) | http://asf.demo.local:8080/status/ · http://jaeger.asf.demo.local:8080/ |
+| 2 | Create GitHub Issue on **asf-demo-app** with label **`asf/run`** | Issue appears in the demo repo |
+| 3 | Wait ≤30s | Issue comment `asf-run-id: …`; orchestrator stage advances |
+| 4 | HITL pause | Stage `hitl_waiting` until approval |
+| 5 | Approve Architect | Comment on the Issue: `asf-approve: demo-approval-1` (or set `HITL_STATIC_APPROVAL_ID`) |
+| 6 | Resume | Developer → Reviewer → Security → QA → Docs → Tekton ephemeral → promote wait |
+| 7 | Promote HITL | Remains blocked without `promote_approval_id` (GitOps gate) |
+| 8 | Tear down | `./scripts/kind-stack-down.sh --cluster` |
 
-## Emergency fallback drill (optional, label clearly)
+## Watch execution
 
-Only if live Granite fails mid-demo:
+```bash
+kubectl --context kind-asf-kind -n asf-factory logs -f deploy/asf-issue-poller
+kubectl --context kind-asf-kind -n asf-factory logs -f deploy/asf-orchestrator
+curl -sS -H 'Host: asf.demo.local' http://127.0.0.1:8080/orch/v1/runs | jq .
+```
 
-1. Set `INFERENCE_FALLBACK=true` (emergency-only — not the primary story).
-2. Confirm OTel / response shows `fallback=true` / `workshop.fallback`.
-3. Tell the room: “This is the emergency recorded/local path; live Granite is the default.”
+## Notes
 
-## After the session
-
-Follow [teardown runbook](../../docs/workshop/teardown.md).
+- Inference defaults to **stub** (`GATEWAY_STUB_MODE=true`).
+- Tekton Kind pipeline deploys the preloaded sample-app image into `asf-workshop-pr-<N>`.
+- RHDH / RHACS / Quay are out of this Kind path (Jaeger + status board are the viz surface).

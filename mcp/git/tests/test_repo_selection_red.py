@@ -12,7 +12,7 @@ from mcp_git.tools import GitTools
 
 
 def test_reject_relative_repo_path(tmp_path: Path) -> None:
-    settings = GitMcpSettings(workspace_root=str(tmp_path), github_owner="fmenesesg", github_repo="ai-software-factory")
+    settings = GitMcpSettings(workspace_root=str(tmp_path), github_owner="fmenesesg", github_repo="asf-demo-app")
     tools = GitTools(settings)
     with pytest.raises(GitSecurityError, match="relative repo_path"):
         tools.select_repo("../escape")
@@ -37,7 +37,7 @@ def test_reject_repo_outside_workspace(tmp_path: Path) -> None:
 
 
 def test_reject_wrong_remote(tmp_path: Path) -> None:
-    allowed = "https://github.com/fmenesesg/ai-software-factory.git"
+    allowed = "https://github.com/fmenesesg/asf-demo-app.git"
     with pytest.raises(GitSecurityError, match="wrong remote"):
         assert_remote_allowed("https://evil.example/repo.git", allowed)
 

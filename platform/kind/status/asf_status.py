@@ -26,6 +26,7 @@ TARGETS = [
     ("mcp-filesystem", "http://asf-mcp-filesystem:8092/health"),
     ("mcp-git", "http://asf-mcp-git:8093/health"),
     ("mcp-kubernetes", "http://asf-mcp-kubernetes:8095/health"),
+    ("issue-poller", "http://asf-issue-poller:8096/health"),
     ("sample-app", "http://sample-app:8080/health"),
 ]
 

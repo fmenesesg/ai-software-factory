@@ -1,0 +1,43 @@
+# SA used by Kind ephemeral Tekton TaskRuns (create ns + deploy sample-app).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: asf-tekton-ephemeral
+  namespace: asf-factory
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: asf-tekton-ephemeral
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["services", "pods", "pods/log", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["httproutes"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: asf-tekton-ephemeral
+  labels:
+    app.kubernetes.io/part-of: ai-software-factory
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: asf-tekton-ephemeral
+subjects:
+  - kind: ServiceAccount
+    name: asf-tekton-ephemeral
+    namespace: asf-factory
