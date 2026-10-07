@@ -9,7 +9,7 @@ Laptop-local AI Software Factory on **Kind + Podman**.
 3. Poller comments `asf-run-id: …` and starts `POST /v1/runs`.
 4. Status board + Jaeger + `/orch/v1/runs` show stage progression.
 5. Architect HITL: comment `asf-approve: <id>` on the Issue (or set `HITL_STATIC_APPROVAL_ID`).
-6. After approval: agents continue through Tekton ephemeral; promote remains blocked without `promote_approval_id`.
+6. After approval: agents continue through Tekton ephemeral; promote with Issue comment `asf-promote: <id>`.
 
 ## Stack
 

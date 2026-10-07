@@ -128,54 +128,86 @@ async def _tick(app: FastAPI) -> None:
             print(f"started run {run_id} for issue #{number}", flush=True)
 
 
+async def _issue_comment_match(
+    client: httpx.AsyncClient, issue_url: str, pattern: str
+) -> str | None:
+    m = re.search(r"/issues/(\d+)", issue_url)
+    if not m or not TOKEN or TOKEN == "kind-local-unused":
+        return None
+    cr = await client.get(
+        f"{GITHUB_API}/repos/{OWNER}/{REPO}/issues/{m.group(1)}/comments",
+        headers=_headers(),
+    )
+    if cr.status_code >= 400:
+        return None
+    for c in cr.json():
+        am = re.search(pattern, c.get("body") or "")
+        if am:
+            return am.group(1)
+    return None
+
+
 async def _resume_hitl(app: FastAPI) -> None:
-    """Resume runs waiting on architect HITL when a Static approval env or reviews appear."""
-    static = os.environ.get("HITL_STATIC_APPROVAL_ID")
+    """Resume Architect / promote HITL from env or Issue comments (asf-approve / asf-promote)."""
+    static_arch = os.environ.get("HITL_STATIC_APPROVAL_ID")
+    static_promo = os.environ.get("HITL_STATIC_PROMOTE_APPROVAL_ID")
     async with httpx.AsyncClient(timeout=30.0) as client:
         listed = await client.get(f"{ORCH_URL}/v1/runs")
         if listed.status_code >= 400:
             return
         runs = (listed.json() or {}).get("runs") or []
         for run in runs:
-            if run.get("stage") != "hitl_waiting":
-                continue
+            stage = run.get("stage")
             run_id = run.get("run_id")
             arts = dict(run.get("artifacts") or {})
-            if arts.get("architect_approval_id"):
-                continue
-            approval = static
-            # Optional: parse approval from issue comments "asf-approve: <id>"
             issue_url = str(arts.get("issue_url") or "")
-            m = re.search(r"/issues/(\d+)", issue_url)
-            if m and TOKEN and TOKEN != "kind-local-unused":
-                num = m.group(1)
-                cr = await client.get(
-                    f"{GITHUB_API}/repos/{OWNER}/{REPO}/issues/{num}/comments",
-                    headers=_headers(),
+
+            if stage == "hitl_waiting" and not arts.get("architect_approval_id"):
+                approval = static_arch or await _issue_comment_match(
+                    client, issue_url, r"asf-approve:\s*(\S+)"
                 )
-                if cr.status_code < 400:
-                    for c in cr.json():
-                        body = c.get("body") or ""
-                        am = re.search(r"asf-approve:\s*(\S+)", body)
-                        if am:
-                            approval = am.group(1)
-                            break
-            if not approval:
+                if not approval:
+                    continue
+                resume_id = f"{run_id}-resume"
+                print(f"resuming architect HITL for {run_id} approval={approval}", flush=True)
+                resp = await client.post(
+                    f"{ORCH_URL}/v1/runs",
+                    json={
+                        "run_id": resume_id,
+                        "architect_approval_id": approval,
+                        "artifacts": arts,
+                    },
+                )
+                print(
+                    f"architect resume {resp.status_code} stage={(resp.json() or {}).get('stage')}",
+                    flush=True,
+                )
                 continue
-            resume_id = f"{run_id}-resume"
-            print(f"resuming HITL for {run_id} with approval={approval}", flush=True)
-            resp = await client.post(
-                f"{ORCH_URL}/v1/runs",
-                json={
-                    "run_id": resume_id,
-                    "architect_approval_id": approval,
-                    "artifacts": arts,
-                },
-            )
-            print(
-                f"resume result {resp.status_code} stage={(resp.json() or {}).get('stage')}",
-                flush=True,
-            )
+
+            if stage == "promote_waiting" and not arts.get("promote_approval_id"):
+                promo = static_promo or await _issue_comment_match(
+                    client, issue_url, r"asf-promote:\s*(\S+)"
+                )
+                if not promo:
+                    continue
+                # Keep architect approval so the graph can pass the earlier gate.
+                resume_id = f"{run_id}-promote"
+                print(f"resuming promote HITL for {run_id} approval={promo}", flush=True)
+                resp = await client.post(
+                    f"{ORCH_URL}/v1/runs",
+                    json={
+                        "run_id": resume_id,
+                        "architect_approval_id": arts.get("architect_approval_id")
+                        or static_arch
+                        or "demo-approval-1",
+                        "promote_approval_id": promo,
+                        "artifacts": arts,
+                    },
+                )
+                print(
+                    f"promote resume {resp.status_code} stage={(resp.json() or {}).get('stage')}",
+                    flush=True,
+                )
 
 
 app = create_app()
