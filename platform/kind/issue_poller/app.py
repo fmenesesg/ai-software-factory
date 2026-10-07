@@ -28,6 +28,7 @@ JAEGER_PUBLIC_URL = os.environ.get(
 def create_app() -> FastAPI:
     app = FastAPI(title="ASF Issue Poller", version="0.1.0")
     app.state.seen: set[str] = set()
+    app.state.resumed: set[str] = set()
     app.state.task = None
 
     @app.get("/health")
@@ -163,6 +164,9 @@ async def _resume_hitl(app: FastAPI) -> None:
             issue_url = str(arts.get("issue_url") or "")
 
             if stage == "hitl_waiting" and not arts.get("architect_approval_id"):
+                resume_key = f"arch:{run_id}"
+                if resume_key in app.state.resumed:
+                    continue
                 approval = static_arch or await _issue_comment_match(
                     client, issue_url, r"asf-approve:\s*(\S+)"
                 )
@@ -178,6 +182,7 @@ async def _resume_hitl(app: FastAPI) -> None:
                         "artifacts": arts,
                     },
                 )
+                app.state.resumed.add(resume_key)
                 print(
                     f"architect resume {resp.status_code} stage={(resp.json() or {}).get('stage')}",
                     flush=True,
@@ -185,6 +190,9 @@ async def _resume_hitl(app: FastAPI) -> None:
                 continue
 
             if stage == "promote_waiting" and not arts.get("promote_approval_id"):
+                resume_key = f"promo:{run_id}"
+                if resume_key in app.state.resumed:
+                    continue
                 promo = static_promo or await _issue_comment_match(
                     client, issue_url, r"asf-promote:\s*(\S+)"
                 )
@@ -204,6 +212,7 @@ async def _resume_hitl(app: FastAPI) -> None:
                         "artifacts": arts,
                     },
                 )
+                app.state.resumed.add(resume_key)
                 print(
                     f"promote resume {resp.status_code} stage={(resp.json() or {}).get('stage')}",
                     flush=True,

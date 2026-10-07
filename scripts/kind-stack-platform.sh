@@ -56,7 +56,8 @@ kubectl --context "${CTX}" apply -f "${ROOT}/platform/kind/apps/tekton-ephemeral
 
 printf '==> Argo CD %s\n' "${ARGOCD_VERSION}"
 kubectl --context "${CTX}" create namespace argocd --dry-run=client -o yaml | kubectl --context "${CTX}" apply -f -
-kubectl --context "${CTX}" apply -n argocd -f \
+# Server-side apply: Argo CRD annotations exceed client-side apply size limits.
+kubectl --context "${CTX}" apply --server-side --force-conflicts -n argocd -f \
   "https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION}/manifests/install.yaml"
 kubectl --context "${CTX}" -n argocd wait --for=condition=Available --timeout=360s \
   deployment/argocd-server || true
